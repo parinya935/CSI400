@@ -1,4 +1,4 @@
-// server.js (LiftCare Backend - Express + JWT + LowDB)
+// server.js (LiftCare Backend - Express + JWT + MySQL)
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -7,8 +7,7 @@ import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { Low } from "lowdb";
-import { JSONFile } from "lowdb/node";
+import mysql from 'mysql2/promise';
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -37,29 +36,16 @@ app.use(
   })
 );
 
-// ---- DB (LowDB JSON) ----
-const dbFile = path.join(__dirname, "db.json");
-const adapter = new JSONFile(dbFile);
-const db = new Low(adapter, { users: [] });
-await db.read();
-db.data ||= { users: [] };
-
-async function saveDb() { return db.write(); }
-
-// seed admin ถ้ายังไม่มีผู้ใช้
-if ((db.data.users || []).length === 0) {
-  const hash = bcrypt.hashSync("admin123", 10);
-  db.data.users.push({
-    id: 1,
-    email: "admin@liftcare.local",
-    password_hash: hash,
-    name: "Administrator",
-    role: "admin",
-    created_at: new Date().toISOString(),
-  });
-  await saveDb();
-  console.log("✅ Seeded user: admin@liftcare.local / admin123");
-}
+// ---- Database Connection ----
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: 'liftcare',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
 // ---- Helpers ----
 function signAccessToken(user) {
@@ -86,17 +72,25 @@ app.post("/auth/register", async (req, res) => {
     return res.status(400).json({ message: "email, password, name are required" });
   }
 
-  const exists = db.data.users.find(u => u.email.toLowerCase() === String(email).toLowerCase());
-  if (exists) return res.status(409).json({ message: "Email already in use" });
+  try {
+    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (users.length > 0) {
+      return res.status(409).json({ message: "Email already in use" });
+    }
 
-  const password_hash = await bcrypt.hash(password, 10);
-  const id = (db.data.users.at(-1)?.id || 0) + 1;
-  const user = { id, email, password_hash, name, role: "user", created_at: new Date().toISOString() };
-  db.data.users.push(user);
-  await saveDb();
+    const password_hash = await bcrypt.hash(password, 10);
+    const [result] = await pool.query(
+      'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+      [email, password_hash, name, 'user']
+    );
 
-  const token = signAccessToken({ id, email, name, role: "user" });
-  return res.status(201).json({ user: { id, email, name, role: "user" }, token });
+    const user = { id: result.insertId, email, name, role: 'user' };
+    const token = signAccessToken(user);
+    return res.status(201).json({ user, token });
+  } catch (error) {
+    console.error('Register error:', error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 app.post("/auth/login", async (req, res) => {
@@ -104,50 +98,105 @@ app.post("/auth/login", async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ message: "email and password are required" });
   }
-  const u = db.data.users.find(u => u.email.toLowerCase() === String(email).toLowerCase());
-  if (!u) return res.status(401).json({ message: "Invalid credentials" });
 
-  const ok = await bcrypt.compare(password, u.password_hash);
-  if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+  try {
+    const [users] = await pool.query(
+      'SELECT id, email, password_hash, name, role FROM users WHERE email = ?',
+      [email]
+    );
 
-  const token = signAccessToken({ id: u.id, email: u.email, name: u.name, role: u.role });
-  return res.json({ user: { id: u.id, email: u.email, name: u.name, role: u.role }, token });
+    if (users.length === 0) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const user = users[0];
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = signAccessToken({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role
+    });
+
+    return res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 app.get("/auth/me", authRequired, (req, res) => {
   return res.json({ user: req.user });
 });
 
-// ---- Demo data ----
-const elevators = [
-  { id: "ELV-001", name: "Lift A", building: "Central Tower", floor: 12, load: 58, state: "operational", updated_at: new Date() },
-  { id: "ELV-002", name: "Lift B", building: "Central Tower", floor: 3, load: 0, state: "maintenance", updated_at: new Date(Date.now()-5*60*1000) },
-  { id: "ELV-003", name: "Lift C", building: "East Wing", floor: 21, load: 34, state: "operational", updated_at: new Date(Date.now()-60*1000) },
-];
-
-const alerts = [
-  { id: "AL-1", type: "fault", title: "Fault E12 – Lift B", at: new Date(Date.now()-5*60*1000) },
-  { id: "AL-2", type: "recover", title: "ระบบกลับมาทำงาน – Lift A", at: new Date(Date.now()-20*60*1000) },
-];
-
 // ---- API (Protected) ----
 app.get("/", (req, res) => res.send("🚀 LiftCare API is running..."));
 
-app.get("/api/elevators", authRequired, (req, res) => res.json(elevators));
-app.get("/api/alerts", authRequired, (req, res) => res.json(alerts));
+app.get("/api/elevators", authRequired, async (req, res) => {
+  try {
+    const [elevators] = await pool.query(`
+      SELECT e.*, b.name as building_name 
+      FROM elevators e 
+      LEFT JOIN buildings b ON e.building_id = b.id
+      ORDER BY e.updated_at DESC
+    `);
+    res.json(elevators);
+  } catch (error) {
+    console.error('Fetch elevators error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
-app.post("/api/tickets", authRequired, (req, res) => {
+app.get("/api/alerts", authRequired, async (req, res) => {
+  try {
+    const [alerts] = await pool.query(`
+      SELECT a.*, e.name as elevator_name 
+      FROM alerts a
+      LEFT JOIN elevators e ON a.elevator_id = e.id
+      WHERE a.resolved_at IS NULL
+      ORDER BY a.created_at DESC
+    `);
+    res.json(alerts);
+  } catch (error) {
+    console.error('Fetch alerts error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/api/tickets", authRequired, async (req, res) => {
   const { elevatorId, description } = req.body || {};
-  if (!elevatorId || !description) return res.status(400).json({ message: "Missing data" });
-  const ticket = {
-    id: "T-" + Date.now(),
-    elevatorId,
-    description,
-    reporter: req.user.email,
-    status: "pending",
-    created_at: new Date(),
-  };
-  return res.status(201).json({ message: "Ticket created", ticket });
+  if (!elevatorId || !description) {
+    return res.status(400).json({ message: "Missing data" });
+  }
+
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO tickets (id, elevator_id, description, reporter_id) VALUES (?, ?, ?, ?)',
+      [`T-${Date.now()}`, elevatorId, description, req.user.id]
+    );
+
+    const [tickets] = await pool.query(
+      'SELECT * FROM tickets WHERE id = ?',
+      [result.insertId]
+    );
+
+    return res.status(201).json({ message: "Ticket created", ticket: tickets[0] });
+  } catch (error) {
+    console.error('Create ticket error:', error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 // ---- Start ----
