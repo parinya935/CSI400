@@ -41,11 +41,32 @@ const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: 'liftcare',
+  database: process.env.DB_NAME || 'liftcare',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
+
+// Seed admin user if no users exist (run once at startup)
+async function ensureSeedAdmin() {
+  try {
+    const [rows] = await pool.query('SELECT COUNT(*) as cnt FROM users');
+    const count = rows?.[0]?.cnt || 0;
+    if (count === 0) {
+      const hash = await bcrypt.hash('admin123', 10);
+      await pool.query(
+        'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)'
+        , ['admin@liftcare.local', hash, 'Administrator', 'admin']
+      );
+      console.log('✅ Seeded admin user: admin@liftcare.local / admin123');
+    }
+  } catch (err) {
+    console.warn('Could not seed admin user (users table may not exist yet):', err.message);
+  }
+}
+
+// Try seeding (don't block server startup if DB not ready)
+ensureSeedAdmin();
 
 // ---- Helpers ----
 function signAccessToken(user) {
