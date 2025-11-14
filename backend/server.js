@@ -38,8 +38,8 @@ app.use(
 
 // ---- Database Connection ----
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
+  host: process.env.DB_HOST || '10.23.251.151',
+  user: process.env.DB_USER || 'Test',
   password: process.env.DB_PASSWORD || '',
   database: 'liftcare',
   waitForConnections: true,
