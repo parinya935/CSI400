@@ -1,85 +1,105 @@
+// src/pages/main.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
 import { useAuth } from "../auth";
 
+import LayoutTopbar from "../components/LayoutTopbar.jsx";
+import SummaryCards from "../components/SummaryCards.jsx";
+import TicketsSection from "../components/TicketsSection.jsx";
+import NotificationsSection from "../components/NotificationsSection.jsx";
+import ElevatorsSection from "../components/ElevatorsSection.jsx";
+import AlertsSection from "../components/AlertsSection.jsx";
+import TicketModal from "../components/TicketModal.jsx";
+
 export default function Main() {
   const api = useApi();
   const { user, logout } = useAuth();
+
   const [elevators, setElevators] = useState([]);
   const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tickets, setTickets] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [msg, setMsg] = useState("");
+
+  const [showTicketModal, setShowTicketModal] = useState(false);
 
   async function load() {
-    setLoading(true);
     try {
-      const [e, a] = await Promise.all([api.get("/api/elevators"), api.get("/api/alerts")]);
+      setMsg("กำลังโหลดข้อมูล...");
+      const [e, a, t, n, s] = await Promise.all([
+        api.get("/api/elevators"),
+        api.get("/api/alerts"),
+        api.get("/api/tickets"),
+        api.get("/api/notifications"),
+        api.get("/api/dashboard/summary"),
+      ]);
       setElevators(e);
       setAlerts(a);
-    } catch (e) {
-      alert("โหลดข้อมูลไม่สำเร็จ: " + e.message);
-    } finally {
-      setLoading(false);
+      setTickets(t);
+      setNotifications(n);
+      setSummary(s);
+      setMsg("");
+    } catch (err) {
+      console.error(err);
+      setMsg("โหลดข้อมูลไม่สำเร็จ: " + err.message);
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
+
+  function openTicketModal() {
+    setShowTicketModal(true);
+  }
+
+  async function handleTicketCreated() {
+    setShowTicketModal(false);
+    await load();
+  }
 
   return (
-    <div style={{ maxWidth:1100, margin:"0 auto", padding:16 }}>
-      <header style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:12 }}>
-        <div>
-          <h1 style={{ margin:0, fontSize:20 }}>LiftCare — หน้าหลัก</h1>
-          <div style={{ color:"#6b7280", fontSize:12 }}>
-            {user?.name ? `ยินดีต้อนรับ, ${user.name}` : ""}
-          </div>
-        </div>
-        <button onClick={logout} style={{ height:36, padding:"0 12px", border:"1px solid #e5e7eb", borderRadius:10, cursor:"pointer" }}>
-          ออกจากระบบ
-        </button>
-      </header>
+    <div style={styles.page}>
+      <LayoutTopbar user={user} onRefresh={load} onLogout={logout} />
 
-      <div style={{ display:"grid", gap:16, gridTemplateColumns:"repeat(auto-fit, minmax(320px,1fr))" }}>
-        <section style={card}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-            <h2 style={{ margin:0, fontSize:16 }}>สถานะลิฟต์</h2>
-            <button onClick={load} style={btnPrimary}>Reload</button>
-          </div>
-          <div style={{ overflow:"auto", marginTop:10 }}>
-            {loading ? <div style={{ color:"#6b7280" }}>กำลังโหลด...</div> : (
-              <table style={table}>
-                <thead><tr><th>ID</th><th>ชื่อ</th><th>อาคาร</th><th>ชั้น</th><th>โหลด</th><th>สถานะ</th></tr></thead>
-                <tbody>
-                  {elevators.map(el => (
-                    <tr key={el.id}>
-                      <td>{el.id}</td><td>{el.name}</td><td>{el.building}</td><td>{el.floor}</td><td>{el.load}%</td>
-                      <td>{badge(el.state)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </section>
+      {msg && <p style={styles.muted}>{msg}</p>}
 
-        <section style={card}>
-          <h2 style={{ margin:"0 0 10px", fontSize:16 }}>แจ้งเตือนล่าสุด</h2>
-          <ul style={{ paddingLeft:16, margin:0 }}>
-            {alerts.map(a => (
-              <li key={a.id}>{new Date(a.at).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })} - {a.title}</li>
-            ))}
-          </ul>
-        </section>
+      <SummaryCards summary={summary} />
+
+      <div style={styles.grid2}>
+        <TicketsSection tickets={tickets} onOpenCreate={openTicketModal} />
+        <NotificationsSection notifications={notifications} />
       </div>
+
+      <div style={styles.grid2}>
+        <ElevatorsSection elevators={elevators} />
+        <AlertsSection alerts={alerts} />
+      </div>
+
+      {showTicketModal && (
+        <TicketModal
+          elevators={elevators}
+          onClose={() => setShowTicketModal(false)}
+          onCreated={handleTicketCreated}
+        />
+      )}
     </div>
   );
 }
 
-const card = { background:"#fff", border:"1px solid #e5e7eb", borderRadius:14, boxShadow:"0 1px 2px rgba(0,0,0,.03)", padding:16 };
-const btnPrimary = { height:36, padding:"0 12px", border:"1px solid #e5e7eb", borderRadius:10, cursor:"pointer", background:"#111", color:"#fff", fontWeight:600 };
-const table = { width:"100%", borderCollapse:"collapse" };
-function badge(state){
-  const base = { padding:"4px 8px", borderRadius:999, color:"#fff", fontSize:12 };
-  if (state === "operational") return <span style={{ ...base, background:"#059669" }}>ปกติ</span>;
-  if (state === "maintenance") return <span style={{ ...base, background:"#b45309" }}>ซ่อม</span>;
-  return <span style={{ ...base, background:"#b91c1c" }}>ขัดข้อง</span>;
-}
+const styles = {
+  page: {
+    minHeight: "100vh",
+    padding: 16,
+    background: "#f3f4f6",
+    fontFamily:
+      "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  },
+  grid2: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+    gap: 16,
+  },
+  muted: { color: "#6b7280", fontSize: 13, margin: "0 0 8px" },
+};

@@ -31,12 +31,14 @@ export default function Login() {
       <form onSubmit={onSubmit} style={styles.card}>
         <h1 style={styles.h1}>LiftCare — Login</h1>
         <p style={styles.muted}>เข้าสู่ระบบเพื่อเข้าหน้าหลัก</p>
+
         <input
           style={styles.input}
           placeholder="อีเมล"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
         <input
           style={styles.input}
           type="password"
@@ -44,10 +46,13 @@ export default function Login() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
         <button style={styles.btn} type="submit">
           เข้าสู่ระบบ
         </button>
+
         <p style={styles.muted}>{msg}</p>
+
         <p style={styles.muted}>
           ยังไม่มีบัญชี?{" "}
           <a href="/register" style={{ color: "#111" }}>
