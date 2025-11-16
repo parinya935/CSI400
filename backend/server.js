@@ -1,15 +1,19 @@
 // server.js (LiftCare Backend - Express + JWT + MySQL)
 import express from "express";
 import cors from "cors";
+import dotenv from "dotenv";
 import morgan from "morgan";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import mysql from 'mysql2/promise';
+import pool from "./DB/db.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import Routes from "./Auth/Auth.js";
+import authRequired from "./Auth/middle.js";
+import main from "./Routes/Core.js";
+import contract from "./Routes/Contracts.js";
+import maintain from "./Routes/Maintenance.js";
+import parts from "./Routes/Parts.js";
 
 dotenv.config();
 
@@ -19,7 +23,6 @@ const __dirname = path.dirname(__filename);
 // ---- Config ----
 const app = express();
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 // ---- Security & middleware ----
@@ -36,149 +39,8 @@ app.use(
   })
 );
 
-// ---- Database Connection ----
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || '10.23.251.151',
-  user: process.env.DB_USER || 'Test',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'liftcare',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
-
-// Seed admin user if no users exist (run once at startup)
-async function ensureSeedAdmin() {
-  try {
-    const [rows] = await pool.query('SELECT COUNT(*) as cnt FROM users');
-    const count = rows?.[0]?.cnt || 0;
-    if (count === 0) {
-      const hash = await bcrypt.hash('admin123', 10);
-      await pool.query(
-        'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)'
-        , ['admin@liftcare.local', hash, 'Administrator', 'admin']
-      );
-      console.log('✅ Seeded admin user: admin@liftcare.local / admin123');
-    }
-  } catch (err) {
-    console.warn('Could not seed admin user (users table may not exist yet):', err.message);
-  }
-}
-
-// Try seeding (don't block server startup if DB not ready)
-ensureSeedAdmin();
-
-// ---- Helpers ----
-function signAccessToken(user) {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: "2h" });
-}
-
-function authRequired(req, res, next) {
-  const h = req.headers.authorization || "";
-  const token = h.startsWith("Bearer ") ? h.slice(7) : null;
-  if (!token) return res.status(401).json({ message: "Missing token" });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // { id, email, role, name }
-    next();
-  } catch (e) {
-    return res.status(401).json({ message: "Invalid or expired token" });
-  }
-}
-
-// ---- Auth Routes ----
-app.post("/auth/register", async (req, res) => {
-  const { email, password, name } = req.body || {};
-  if (!email || !password || !name) {
-    return res.status(400).json({ message: "email, password, name are required" });
-  }
-
-  try {
-    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (users.length > 0) {
-      return res.status(409).json({ message: "Email already in use" });
-    }
-
-    const password_hash = await bcrypt.hash(password, 10);
-    const [result] = await pool.query(
-      'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-      [email, password_hash, name, 'user']
-    );
-
-    const user = { id: result.insertId, email, name, role: 'user' };
-    const token = signAccessToken(user);
-    return res.status(201).json({ user, token });
-  } catch (error) {
-    console.error('Register error:', error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-app.post("/auth/login", async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ message: "email and password are required" });
-  }
-
-  try {
-    const [users] = await pool.query(
-      'SELECT id, email, password_hash, name, role FROM users WHERE email = ?',
-      [email]
-    );
-
-    if (users.length === 0) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const user = users[0];
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const token = signAccessToken({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
-    });
-
-    return res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
-      },
-      token
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-app.get("/auth/me", authRequired, (req, res) => {
-  return res.json({ user: req.user });
-});
-
 // ---- API (Protected) ----
 app.get("/", (req, res) => res.send("🚀 LiftCare API is running..."));
-
-app.get("/api/elevators", authRequired, async (req, res) => {
-  try {
-    const [elevators] = await pool.query(`
-      SELECT e.*, b.name as building_name 
-      FROM elevators e 
-      LEFT JOIN buildings b ON e.building_id = b.id
-      ORDER BY e.updated_at DESC
-    `);
-    res.json(elevators);
-  } catch (error) {
-    console.error('Fetch elevators error:', error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
 
 app.get("/api/alerts", authRequired, async (req, res) => {
   try {
@@ -221,6 +83,8 @@ app.post("/api/tickets", authRequired, async (req, res) => {
 });
 
 // ---- Start ----
+app.use('/auth', Routes)
+app.use('/api', main, contract, maintain, parts);
 app.listen(PORT, () => {
   console.log(`✅ LiftCare backend running at http://localhost:${PORT}`);
   console.log(`CORS_ORIGIN: ${CORS_ORIGIN}`);
