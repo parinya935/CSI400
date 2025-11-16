@@ -6,7 +6,7 @@ import { useAuth } from "../auth";
 import LayoutTopbar from "../components/LayoutTopbar.jsx";
 import SummaryCards from "../components/SummaryCards.jsx";
 import TicketsSection from "../components/TicketsSection.jsx";
-import NotificationsSection from "../components/NotificationsSection.jsx";
+// import NotificationsSection from "../components/NotificationsSection.jsx"; // ❌ ไม่ใช้แล้ว
 import ElevatorsSection from "../components/ElevatorsSection.jsx";
 import AlertsSection from "../components/AlertsSection.jsx";
 import TicketModal from "../components/TicketModal.jsx";
@@ -59,19 +59,37 @@ export default function Main() {
     await load();
   }
 
+  // ✅ ฟังก์ชันทำ notification เป็นอ่านแล้ว
+  async function markNotificationRead(id) {
+    try {
+      await api.post(`/api/notifications/${id}/read`);
+      await load();
+    } catch (err) {
+      console.error("Mark notification read failed:", err);
+    }
+  }
+
   return (
     <div style={styles.page}>
-      <LayoutTopbar user={user} onRefresh={load} onLogout={logout} />
+      {/* ✅ ส่ง notifications + onMarkRead ไปที่ Topbar */}
+      <LayoutTopbar
+        user={user}
+        onRefresh={load}
+        onLogout={logout}
+        notifications={notifications}
+        onMarkRead={markNotificationRead}
+      />
 
       {msg && <p style={styles.muted}>{msg}</p>}
 
       <SummaryCards summary={summary} />
 
-      <div style={styles.grid2}>
+      {/* ✅ Tickets แถวบนให้กินเต็มแถว */}
+      <div style={styles.grid1}>
         <TicketsSection tickets={tickets} onOpenCreate={openTicketModal} />
-        <NotificationsSection notifications={notifications} />
       </div>
 
+      {/* ✅ แถวล่างยังเป็น 2 คอลัมน์เหมือนเดิม */}
       <div style={styles.grid2}>
         <ElevatorsSection elevators={elevators} />
         <AlertsSection alerts={alerts} />
@@ -96,6 +114,14 @@ const styles = {
     fontFamily:
       "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
+  // ✅ แถว tickets ให้มี 1 คอลัมน์
+  grid1: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr)",
+    gap: 16,
+    marginBottom: 16,
+  },
+  // ✅ แถว elevators + alerts ยัง 2 คอลัมน์
   grid2: {
     display: "grid",
     gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
