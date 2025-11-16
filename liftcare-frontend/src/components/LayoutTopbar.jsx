@@ -260,8 +260,10 @@ const styles = {
     position: "relative",
   },
   settingsIconBtn: {
-  width: 40,
-  height: 40,
+  width: 32,
+  height: 32,
+  marginLeft: 6,
+  marginRight: 8,    // <-- เพิ่มตรงนี้
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -269,11 +271,12 @@ const styles = {
   border: "1px solid #d1d5db",
   background: "#ffffff",
   cursor: "pointer",
-  fontSize: 0,               // ไม่ให้มีช่องว่าง text
+  fontSize: 0,
   outline: "none",
   boxShadow: "none",
   transition: "background 0.2s ease, transform 0.1s ease",
 },
+
 
   settingsIconBtnFocus: {
     outline: "none",
