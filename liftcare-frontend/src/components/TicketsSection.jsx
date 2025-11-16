@@ -1,7 +1,8 @@
 // src/components/TicketsSection.jsx
 export default function TicketsSection({ tickets, onOpenCreate }) {
   return (
-    <section style={styles.section}>
+    <section className="lift-card"
+    style={styles.section}>
       <div style={styles.headerRow}>
         <h2 style={styles.sectionTitle}>ใบงานซ่อมล่าสุด</h2>
         <button style={styles.primaryBtn} onClick={onOpenCreate}>

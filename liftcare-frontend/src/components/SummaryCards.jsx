@@ -1,7 +1,8 @@
 // src/components/SummaryCards.jsx
 export default function SummaryCards({ summary }) {
   return (
-    <section style={styles.section}>
+    <section className="lift-card"
+    style={styles.section}>
       <h2 style={styles.sectionTitle}>ภาพรวมระบบ</h2>
       <div style={styles.cardsRow}>
         <div style={styles.card}>

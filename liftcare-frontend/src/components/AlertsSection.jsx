@@ -1,7 +1,8 @@
 // src/components/AlertsSection.jsx
 export default function AlertsSection({ alerts }) {
   return (
-    <section style={styles.section}>
+    <section className="lift-card"
+    style={styles.section}>
       <h2 style={styles.sectionTitle}>แจ้งเตือนลิฟต์</h2>
       {alerts.length === 0 ? (
         <p style={styles.muted}>ยังไม่มีแจ้งเตือน</p>

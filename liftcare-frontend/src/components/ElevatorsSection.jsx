@@ -1,7 +1,8 @@
 // src/components/ElevatorsSection.jsx
 export default function ElevatorsSection({ elevators }) {
   return (
-    <section style={styles.section}>
+    <section className="lift-card"
+    style={styles.section}>
       <h2 style={styles.sectionTitle}>สถานะลิฟต์</h2>
       {elevators.length === 0 ? (
         <p style={styles.muted}>ยังไม่มีข้อมูลลิฟต์</p>

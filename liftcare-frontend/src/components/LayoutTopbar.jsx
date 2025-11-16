@@ -1,5 +1,6 @@
 // src/components/LayoutTopbar.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 // SVG ระฆัง
 function BellIcon({ size = 24 }) {
@@ -34,14 +35,11 @@ function SettingsIcon({ size = 20 }) {
       strokeLinejoin="round"
       style={{ display: "block" }}
     >
-      {/* วงล้อฟันเฟืองกลาง */}
       <circle cx="12" cy="12" r="3" />
-      {/* ฟันเฟืองรอบนอก (แนว Heroicons/Feather style) */}
       <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.6 1.65 1.65 0 0010.51 3.1H11a2 2 0 012 0h.09A1.65 1.65 0 0015 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.33.31.6.73.6 1.2v.09c0 .47-.27.89-.6 1.71z" />
     </svg>
   );
 }
-
 
 export default function LayoutTopbar({
   user,
@@ -50,9 +48,29 @@ export default function LayoutTopbar({
   notifications = [],
   onMarkRead = () => {},
 }) {
+  const nav = useNavigate();
   const [openNoti, setOpenNoti] = useState(false);
   const [openSettings, setOpenSettings] = useState(false);
   const [hover, setHover] = useState(false);
+  const [theme, setTheme] = useState("light");
+
+  // โหลดธีมจาก localStorage ตอนเริ่ม
+  useEffect(() => {
+    const saved = localStorage.getItem("theme") || "light";
+    setTheme(saved);
+    document.body.setAttribute("data-theme", saved);
+  }, []);
+
+  // เวลา theme เปลี่ยน ให้เซฟ + set ที่ body
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+    document.body.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  // ฟังก์ชันสลับธีม
+  function toggleTheme() {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  }
 
   const unread = notifications.filter((n) => !n.is_read).length;
 
@@ -100,7 +118,7 @@ export default function LayoutTopbar({
           )}
         </div>
 
-        {/* โปรไฟล์ + ปุ่มตั้งค่า (dropdown) */}
+        {/* โปรไฟล์ + ปุ่มตั้งค่า */}
         <div style={styles.profileWrap}>
           <div style={styles.avatar}>{initial}</div>
 
@@ -110,36 +128,59 @@ export default function LayoutTopbar({
           </div>
 
           <div style={styles.settingsWrap}>
-  <button
-    style={styles.settingsIconBtn}
-    onClick={() => setOpenSettings(!openSettings)}
-  >
-    <SettingsIcon size={20} />
-  </button>
+            <button
+              style={styles.settingsIconBtn}
+              onClick={() => setOpenSettings(!openSettings)}
+              onMouseEnter={() => setHover(true)}
+              onMouseLeave={() => setHover(false)}
+            >
+              <SettingsIcon size={20} />
+            </button>
 
-  {openSettings && (
-    <div style={styles.settingsDropdown}>
-      <div style={styles.menuItem}>👤 ข้อมูลบัญชี</div>
-      <div style={styles.menuItem}>🔐 เปลี่ยนรหัสผ่าน</div>
-      <div style={styles.menuItem}>🎨 ธีม / โหมดมืด</div>
-      <div style={styles.menuItem}>🔔 การแจ้งเตือน</div>
-      <hr style={styles.hr} />
-      <div style={styles.menuItemDanger} onClick={onLogout}>
-        🚪 ออกจากระบบ
-      </div>
-    </div>
-  )}
-</div>
+            {openSettings && (
+              <div style={styles.settingsDropdown}>
+                <div
+                  style={styles.menuItem}
+                  onClick={() => {
+                    nav("/settings/account");
+                    setOpenSettings(false);
+                  }}
+                >
+                  👤 ข้อมูลบัญชี
+                </div>
+                <div
+                  style={styles.menuItem}
+                  onClick={() => {
+                    nav("/settings/password");
+                    setOpenSettings(false);
+                  }}
+                >
+                  🔐 เปลี่ยนรหัสผ่าน
+                </div>
+                <div
+                  style={styles.menuItem}
+                  onClick={() => {
+                    toggleTheme();
+                    // ไม่ปิด dropdown จะได้เห็นสถานะเปลี่ยนทันที
+                  }}
+                >
+                  {theme === "light" ? "🌙 เปิดโหมดมืด" : "☀️ เปิดโหมดสว่าง"}
+                </div>
 
+                <hr style={styles.hr} />
+                <div
+                  style={styles.menuItemDanger}
+                  onClick={() => {
+                    setOpenSettings(false);
+                    onLogout();
+                  }}
+                >
+                  🚪 ออกจากระบบ
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* ปุ่ม Logout เผื่ออยากแยกจากเมนูด้านบน */}
-        {/* ถ้าใช้ออกจากระบบใน dropdown แล้ว ไม่อยากซ้ำ ตัดปุ่มนี้ออกได้ */}
-        {/* 
-        <button style={styles.logout} onClick={onLogout}>
-          ออกจากระบบ
-        </button> 
-        */}
       </div>
     </header>
   );
@@ -214,7 +255,6 @@ const styles = {
   }),
   body: { fontSize: 12, color: "#6b7280", margin: "4px 0 0" },
 
-  // โปรไฟล์ + ตั้งค่า
   profileWrap: {
     display: "flex",
     alignItems: "center",
@@ -255,44 +295,32 @@ const styles = {
     overflow: "hidden",
   },
 
-  // dropdown ตั้งค่า
   settingsWrap: {
     position: "relative",
   },
   settingsIconBtn: {
-  width: 32,
-  height: 32,
-  marginLeft: 6,
-  marginRight: 8,    // <-- เพิ่มตรงนี้
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: "50%",
-  border: "1px solid #d1d5db",
-  background: "#ffffff",
-  cursor: "pointer",
-  fontSize: 0,
-  outline: "none",
-  boxShadow: "none",
-  transition: "background 0.2s ease, transform 0.1s ease",
-},
-
-
-  settingsIconBtnFocus: {
+    width: 32,
+    height: 32,
+    marginLeft: 6,
+    marginRight: 8,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "50%",
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    cursor: "pointer",
+    fontSize: 0,
     outline: "none",
     boxShadow: "none",
-  },
-
-  settingsIconBtnHover: {
-    background: "#f3f4f6",
-    transform: "scale(1.05)",
+    transition: "background 0.2s ease, transform 0.1s ease",
   },
 
   settingsDropdown: {
     position: "absolute",
     top: 36,
     right: 0,
-    width: 180,
+    width: 200,
     background: "#fff",
     borderRadius: 10,
     padding: "8px 0",
