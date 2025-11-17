@@ -29,12 +29,16 @@ Routes.post("/register", async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(password, 10);
+
+    // ค่า default เป็น 'customer'
+    const defaultRole = 'customer';
+
     const [result] = await pool.query(
       'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-      [email, password_hash, name, 'user']
+      [email, password_hash, name, defaultRole]
     );
 
-    const user = { id: result.insertId, email, name, role: 'user' };
+    const user = { id: result.insertId, email, name, role: defaultRole };
     const token = signAccessToken(user);
     return res.status(201).json({ user, token });
   } catch (error) {

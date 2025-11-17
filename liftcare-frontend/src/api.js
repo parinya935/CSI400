@@ -27,5 +27,7 @@ export function useApi() {
   return {
     post: (p, body) => request(p, { method: "POST", body: JSON.stringify(body) }),
     get: (p) => request(p),
+    put: (p, body) => request(p, { method: "PUT", body: JSON.stringify(body) }),
+    delete: (p) => request(p, { method: "DELETE" }),
   };
 }
