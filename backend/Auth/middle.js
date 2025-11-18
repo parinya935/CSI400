@@ -16,4 +16,21 @@ function authRequired(req, res, next) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 }
+// ✅ เช็ค Role
+export function roleRequired(roles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const userRole = req.user.role;
+    const allowed = Array.isArray(roles) ? roles : [roles];
+
+    if (!allowed.includes(userRole)) {
+      return res.status(403).json({ message: "Forbidden: insufficient role" });
+    }
+
+    next();
+  };
+}
 export default authRequired;

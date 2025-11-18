@@ -1,13 +1,13 @@
 // ---- Maintenance Routes ----
 import express from "express";
 import pool from "../DB/db.js";
-import authRequired from "../Auth/middle.js";
+import authRequired, { roleRequired } from "../Auth/middle.js";
 
 const router = express.Router();
 
 // Template + Checklist (Maintenance Templates)
 // GET: ดึงทั้งหมด
-router.get("/maintenance/templates", authRequired, async (req, res) => {
+router.get("/maintenance/templates", authRequired, roleRequired(["admin", "technician"]), async (req, res) => {
   try {
     const [rows] = await pool.query(
       "SELECT * FROM maintenance_templates ORDER BY id DESC"
@@ -20,7 +20,7 @@ router.get("/maintenance/templates", authRequired, async (req, res) => {
 });
 
 // POST: สร้าง template ใหม่
-router.post("/maintenance/templates", authRequired, async (req, res) => {
+router.post("/maintenance/templates", authRequired, roleRequired("admin"), async (req, res) => {
   const { name, description } = req.body || {};
   if (!name) {
     return res.status(400).json({ message: "Missing name" });
@@ -43,7 +43,7 @@ router.post("/maintenance/templates", authRequired, async (req, res) => {
 });
 
 // PUT: แก้ไข template ตาม id
-router.put("/maintenance/templates/:id", authRequired, async (req, res) => {
+router.put("/maintenance/templates/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
   const { name, description } = req.body || {};
 
@@ -77,7 +77,7 @@ router.put("/maintenance/templates/:id", authRequired, async (req, res) => {
 });
 
 // DELETE: ลบ template ตาม id
-router.delete("/maintenance/templates/:id", authRequired, async (req, res) => {
+router.delete("/maintenance/templates/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
   try {
     const [result] = await pool.query(
@@ -96,8 +96,10 @@ router.delete("/maintenance/templates/:id", authRequired, async (req, res) => {
 
 // Plan
 router.get("/maintenance/plans", authRequired, async (req, res) => {
+  const { role, customer_id } = req.user || {};
+
   try {
-    const [rows] = await pool.query(`
+    let sql = `
       SELECT
         mp.*,
         c.contract_code AS contract_code,
@@ -105,8 +107,18 @@ router.get("/maintenance/plans", authRequired, async (req, res) => {
       FROM maintenance_plans mp
       LEFT JOIN contracts c ON mp.contract_id = c.id
       LEFT JOIN elevators e ON mp.elevator_id = e.id
-      ORDER BY mp.id DESC
-    `);
+      LEFT JOIN buildings b ON e.building_id = b.id
+    `;
+    const params = [];
+
+    if (role === "customer") {
+      sql += " WHERE b.customer_id = ?";
+      params.push(customer_id || 0);
+    }
+
+    sql += " ORDER BY mp.id DESC";
+
+    const [rows] = await pool.query(sql, params);
     res.json(rows);
   } catch (error) {
     console.error("Fetch plans error:", error);
@@ -114,7 +126,7 @@ router.get("/maintenance/plans", authRequired, async (req, res) => {
   }
 });
 
-router.post("/maintenance/plans", authRequired, async (req, res) => {
+router.post("/maintenance/plans", authRequired, roleRequired(["admin", "technician"]), async (req, res) => {
   const {
     contract_id,
     elevator_id,
@@ -158,7 +170,7 @@ router.post("/maintenance/plans", authRequired, async (req, res) => {
   }
 });
 
-router.put("/maintenance/plans/:id", authRequired, async (req, res) => {
+router.put("/maintenance/plans/:id", authRequired, roleRequired(["admin", "technician"]), async (req, res) => {
   const { id } = req.params;
   const {
     contract_id,
@@ -224,7 +236,7 @@ router.put("/maintenance/plans/:id", authRequired, async (req, res) => {
   }
 });
 
-router.delete("/maintenance/plans/:id", authRequired, async (req, res) => {
+router.delete("/maintenance/plans/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -245,9 +257,9 @@ router.delete("/maintenance/plans/:id", authRequired, async (req, res) => {
 });
 
 router.get("/maintenance/jobs", authRequired, async (req, res) => {
+  const { role, id: userId, customer_id } = req.user || {};
   try {
-    const [rows] = await pool.query(
-      `
+    let sql = `
       SELECT
         mj.*,
         e.name AS elevator_name,
@@ -260,9 +272,20 @@ router.get("/maintenance/jobs", authRequired, async (req, res) => {
       LEFT JOIN technicians tech ON mj.technician_id = tech.id
       LEFT JOIN users u ON tech.user_id = u.id
       LEFT JOIN contracts c ON mj.contract_id = c.id
-      ORDER BY mj.created_at DESC
-      `
-    );
+    `;
+    const params = [];
+
+    if (role === "technician") {
+      sql += " WHERE u.id = ?";
+      params.push(userId);
+    } else if (role === "customer") {
+      sql += " WHERE b.customer_id = ?";
+      params.push(customer_id || 0);
+    }
+
+    sql += " ORDER BY mj.created_at DESC";
+
+    const [rows] = await pool.query(sql, params);
     res.json(rows);
   } catch (error) {
     console.error("Fetch maintenance jobs error:", error);
@@ -270,7 +293,7 @@ router.get("/maintenance/jobs", authRequired, async (req, res) => {
   }
 });
 
-router.post("/maintenance/jobs", authRequired, async (req, res) => {
+router.post("/maintenance/jobs", authRequired, roleRequired(["admin", "technician"]), async (req, res) => {
   const {
     elevator_id,
     job_type, // planned / emergency
@@ -357,6 +380,7 @@ router.post("/maintenance/jobs", authRequired, async (req, res) => {
   }
 });
 
+// แก้ไข job
 router.put("/maintenance/jobs/:id", authRequired, async (req, res) => {
   const { id } = req.params;
   const {
@@ -372,6 +396,8 @@ router.put("/maintenance/jobs/:id", authRequired, async (req, res) => {
     total_cost,
   } = req.body || {};
 
+  const { role, id: userId } = req.user || {};
+
   if (!elevator_id || !job_type) {
     return res
       .status(400)
@@ -383,6 +409,30 @@ router.put("/maintenance/jobs/:id", authRequired, async (req, res) => {
   const safeTotal = total_cost != null ? Number(total_cost) : labor + parts;
 
   try {
+    // ถ้าเป็น technician → เช็คก่อนว่าเป็นงานของตัวเองไหม
+    if (role === "technician") {
+      const [check] = await pool.query(
+        `
+        SELECT mj.id
+        FROM maintenance_jobs mj
+        LEFT JOIN technicians tech ON mj.technician_id = tech.id
+        LEFT JOIN users u ON tech.user_id = u.id
+        WHERE mj.id = ? AND u.id = ?
+        `,
+        [id, userId]
+      );
+
+      if (check.length === 0) {
+        return res.status(403).json({
+          message: "คุณไม่มีสิทธิ์แก้งานนี้",
+        });
+      }
+    } else if (role === "customer") {
+      // ลูกค้าห้ามแก้
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    // Admin = ผ่านได้
+
     const [result] = await pool.query(
       `
       UPDATE maintenance_jobs
@@ -444,7 +494,7 @@ router.put("/maintenance/jobs/:id", authRequired, async (req, res) => {
   }
 });
 
-router.delete("/maintenance/jobs/:id", authRequired, async (req, res) => {
+router.delete("/maintenance/jobs/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
   try {
     const [result] = await pool.query(

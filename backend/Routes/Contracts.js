@@ -1,22 +1,35 @@
 // ---- Contracts Routes ----
 import express from "express";
 import pool from "../DB/db.js";
-import authRequired from "../Auth/middle.js";
+import authRequired, { roleRequired } from "../Auth/middle.js";
 
 const router = express.Router();
 
 // สัญญา
 router.get("/contracts", authRequired, async (req, res) => {
-	try {
-		const [rows] = await pool.query('SELECT * FROM contracts ORDER BY start_date DESC');
-		res.json(rows);
-	} catch (error) {
-		console.error('Fetch contracts error:', error);
-		res.status(500).json({ message: 'Internal server error' });
-	}
+  const { role, customer_id } = req.user || {};
+
+  try {
+    let sql = "SELECT * FROM contracts";
+    const params = [];
+
+    if (role === "customer") {
+      sql += " WHERE customer_id = ?";
+      params.push(customer_id || 0);
+    }
+
+    sql += " ORDER BY start_date DESC";
+
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Fetch contracts error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
-router.post("/contracts", authRequired, async (req, res) => {
+// สร้างสัญญา
+router.post("/contracts", authRequired, roleRequired("admin"), async (req, res) => {
 	const { customer_id, contract_code, contract_type, start_date, end_date, maintenance_times_per_year, included_items, excluded_items, notify_before_days } = req.body || {};
 	if (!customer_id || !contract_code || !contract_type || !start_date || !end_date) return res.status(400).json({ message: 'Missing required fields' });
 	try {
@@ -33,7 +46,7 @@ router.post("/contracts", authRequired, async (req, res) => {
 });
 
 // แก้ไขสัญญา
-router.put("/contracts/:id", authRequired, async (req, res) => {
+router.put("/contracts/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
   const {
     customer_id,
@@ -95,7 +108,7 @@ router.put("/contracts/:id", authRequired, async (req, res) => {
 });
 
 // ลบสัญญา
-router.delete("/contracts/:id", authRequired, async (req, res) => {
+router.delete("/contracts/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -114,17 +127,26 @@ router.delete("/contracts/:id", authRequired, async (req, res) => {
   }
 });
 
-// ดึงใบเสนอราคาทั้งหมด (พร้อมชื่อลูกค้า)
+// ดึงใบเสนอราคา (Admin = ทั้งหมด, Customer = ของตัวเอง)
 router.get("/quotations", authRequired, async (req, res) => {
+  const { role, customer_id } = req.user || {};
+
   try {
-    const [rows] = await pool.query(
-      `
+    let sql = `
       SELECT q.*, c.name AS customer_name
       FROM quotations q
       LEFT JOIN customers c ON q.customer_id = c.id
-      ORDER BY q.id DESC
-      `
-    );
+    `;
+    const params = [];
+
+    if (role === "customer") {
+      sql += " WHERE q.customer_id = ?";
+      params.push(customer_id || 0);
+    }
+
+    sql += " ORDER BY q.id DESC";
+
+    const [rows] = await pool.query(sql, params);
     res.json(rows);
   } catch (error) {
     console.error("Fetch quotations error:", error);
@@ -133,7 +155,7 @@ router.get("/quotations", authRequired, async (req, res) => {
 });
 
 // สร้างใบเสนอราคา
-router.post("/quotations", authRequired, async (req, res) => {
+router.post("/quotations", authRequired, roleRequired("admin"), async (req, res) => {
   const {
     quotation_code,
     customer_id,
@@ -178,7 +200,7 @@ router.post("/quotations", authRequired, async (req, res) => {
 });
 
 // แก้ไขใบเสนอราคา
-router.put("/quotations/:id", authRequired, async (req, res) => {
+router.put("/quotations/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
   const {
     quotation_code,
@@ -234,7 +256,7 @@ router.put("/quotations/:id", authRequired, async (req, res) => {
 });
 
 // ลบใบเสนอราคา
-router.delete("/quotations/:id", authRequired, async (req, res) => {
+router.delete("/quotations/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
   try {
     const [result] = await pool.query("DELETE FROM quotations WHERE id = ?", [
@@ -252,15 +274,20 @@ router.delete("/quotations/:id", authRequired, async (req, res) => {
 
 // ดึงใบแจ้งหนี้ (พร้อมชื่อลูกค้า)
 router.get("/invoices", authRequired, async (req, res) => {
+  const { role, customer_id } = req.user || {};
+
   try {
-    const [rows] = await pool.query(
-      `
-      SELECT i.*, c.name AS customer_name
-      FROM invoices i
-      LEFT JOIN customers c ON i.customer_id = c.id
-      ORDER BY i.id DESC
-      `
-    );
+    let sql = "SELECT * FROM invoices";
+    const params = [];
+
+    if (role === "customer") {
+      sql += " WHERE customer_id = ?";
+      params.push(customer_id || 0);
+    }
+
+    sql += " ORDER BY id DESC";
+
+    const [rows] = await pool.query(sql, params);
     res.json(rows);
   } catch (error) {
     console.error("Fetch invoices error:", error);
@@ -269,7 +296,7 @@ router.get("/invoices", authRequired, async (req, res) => {
 });
 
 // สร้างใบแจ้งหนี้
-router.post("/invoices", authRequired, async (req, res) => {
+router.post("/invoices", authRequired, roleRequired("admin"), async (req, res) => {
   const {
     invoice_code,
     customer_id,
@@ -316,7 +343,7 @@ router.post("/invoices", authRequired, async (req, res) => {
 });
 
 // แก้ไขใบแจ้งหนี้
-router.put("/invoices/:id", authRequired, async (req, res) => {
+router.put("/invoices/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
   const {
     invoice_code,
@@ -375,7 +402,7 @@ router.put("/invoices/:id", authRequired, async (req, res) => {
 });
 
 // ลบใบแจ้งหนี้
-router.delete("/invoices/:id", authRequired, async (req, res) => {
+router.delete("/invoices/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
   try {
     const [result] = await pool.query("DELETE FROM invoices WHERE id = ?", [
@@ -392,7 +419,7 @@ router.delete("/invoices/:id", authRequired, async (req, res) => {
 });
 
 // ดึง config ล่าสุด (มีแค่ 1 record ก็พอ)
-router.get("/pricing-settings", authRequired, async (req, res) => {
+router.get("/pricing-settings", authRequired, roleRequired("admin") , async (req, res) => {
   try {
     const [rows] = await pool.query(
       `
@@ -420,7 +447,7 @@ router.get("/pricing-settings", authRequired, async (req, res) => {
 });
 
 // บันทึก/อัปเดต config (ถ้ามีแล้ว update, ถ้าไม่มี insert)
-router.put("/pricing-settings", authRequired, async (req, res) => {
+router.put("/pricing-settings", authRequired, roleRequired("admin"), async (req, res) => {
   const {
     id,
     call_fee,

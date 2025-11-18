@@ -33,8 +33,8 @@ export default function Elevators() {
         api.get("/api/elevators"),
         api.get("/api/buildings"),
       ]);
-      setElevators(es);
-      setBuildings(bs);
+      setElevators(es || []);
+      setBuildings(bs || []);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load elevators");
@@ -73,7 +73,7 @@ export default function Elevators() {
       install_year: form.install_year || null,
       install_location: form.install_location || null,
       capacity: form.capacity || null,
-      state: form.state || "operational",
+      state: form.state || "normal",
       last_maintenance_at: form.last_maintenance_at || null,
       next_maintenance_at: form.next_maintenance_at || null,
     };
@@ -98,13 +98,13 @@ export default function Elevators() {
     setForm({
       id: elev.id,
       name: elev.name || "",
-      building_id: elev.building_id,
+      building_id: elev.building_id != null ? String(elev.building_id) : "",
       brand: elev.brand || "",
       model: elev.model || "",
       install_year: elev.install_year || "",
       install_location: elev.install_location || "",
       capacity: elev.capacity || "",
-      state: elev.state || "operational",
+      state: elev.state || "normal",
       last_maintenance_at: elev.last_maintenance_at
         ? elev.last_maintenance_at.slice(0, 10)
         : "",
@@ -117,7 +117,7 @@ export default function Elevators() {
   async function handleDelete(id) {
     if (!window.confirm("ต้องการลบลิฟต์นี้ใช่หรือไม่?")) return;
     try {
-      await api.del(`/api/elevators/${id}`);
+      await api.delete(`/api/elevators/${id}`);
       await loadData();
     } catch (err) {
       console.error(err);
@@ -130,16 +130,31 @@ export default function Elevators() {
     setForm(emptyForm);
   }
 
+  function buildingName(bid) {
+    const b = buildings.find((x) => x.id === bid);
+    return b ? b.name : `#${bid}`;
+  }
+
   return (
     <div>
-      <h2>Elevators</h2>
+      {/* หัวหน้าเพจ */}
+      <div className="app-page-header">
+        <h2 className="app-page-title">Elevators</h2>
+        <p className="app-page-subtitle">
+          จัดการข้อมูลลิฟต์ (อาคาร / ยี่ห้อ / รุ่น / ปีติดตั้ง / สถานะ)
+        </p>
+      </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">
-          {editingId ? "Edit Elevator" : "New Elevator"}
+      {/* ฟอร์มลิฟต์ */}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">
+            {editingId ? "Edit Elevator" : "New Elevator"}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 8 }}>
+        <form onSubmit={handleSubmit}>
+          {/* Elevator ID เฉพาะตอนสร้างใหม่ */}
           {!editingId && (
             <label>
               Elevator ID *
@@ -153,35 +168,42 @@ export default function Elevators() {
             </label>
           )}
 
-          <label>
-            Name *
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="input"
-            />
-          </label>
+          {/* Name + Building */}
+          <div className="form-row">
+            <div>
+              <label>
+                Name *
+                <input
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  className="input"
+                />
+              </label>
+            </div>
+            <div>
+              <label>
+                Building *
+                <select
+                  name="building_id"
+                  value={form.building_id}
+                  onChange={handleChange}
+                  className="input"
+                >
+                  <option value="">-- select building --</option>
+                  {buildings.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} (ID: {b.id})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
 
-          <label>
-            Building *
-            <select
-              name="building_id"
-              value={form.building_id}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="">-- select building --</option>
-              {buildings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} (ID: {b.id})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* Brand / Model */}
+          <div className="form-row">
+            <div>
               <label>
                 Brand
                 <input
@@ -192,7 +214,7 @@ export default function Elevators() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Model
                 <input
@@ -205,8 +227,9 @@ export default function Elevators() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* Install Year / Capacity */}
+          <div className="form-row">
+            <div>
               <label>
                 Install Year
                 <input
@@ -218,7 +241,7 @@ export default function Elevators() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Capacity (kg)
                 <input
@@ -232,6 +255,7 @@ export default function Elevators() {
             </div>
           </div>
 
+          {/* Install location */}
           <label>
             Install Location
             <input
@@ -242,6 +266,7 @@ export default function Elevators() {
             />
           </label>
 
+          {/* State */}
           <label>
             State
             <select
@@ -258,8 +283,9 @@ export default function Elevators() {
             </select>
           </label>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* วันที่บำรุงล่าสุด / ครั้งถัดไป */}
+          <div className="form-row">
+            <div>
               <label>
                 Last Maintenance
                 <input
@@ -271,7 +297,7 @@ export default function Elevators() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Next Maintenance
                 <input
@@ -285,14 +311,15 @@ export default function Elevators() {
             </div>
           </div>
 
+          {/* ปุ่ม */}
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="btn-primary">
+            <button type="submit" className="button primary">
               {editingId ? "Save Changes" : "Create"}
             </button>
             {editingId && (
               <button
                 type="button"
-                className="btn-outline"
+                className="button secondary"
                 onClick={handleCancel}
               >
                 Cancel
@@ -302,11 +329,14 @@ export default function Elevators() {
         </form>
       </div>
 
-      {loading && <div className="card">Loading...</div>}
+      {/* Error / Table */}
       {error && <div className="card error">{error}</div>}
+
       {!loading && !error && (
         <div className="card">
-          <div className="card-title">Elevator List</div>
+          <div className="card-header">
+            <div className="card-title">Elevator List</div>
+          </div>
           <table className="table">
             <thead>
               <tr>
@@ -315,7 +345,7 @@ export default function Elevators() {
                 <th>Building</th>
                 <th>Brand/Model</th>
                 <th>State</th>
-                <th />
+                <th style={{ width: 140 }} />
               </tr>
             </thead>
             <tbody>
@@ -323,17 +353,22 @@ export default function Elevators() {
                 <tr key={e.id}>
                   <td>{e.id}</td>
                   <td>{e.name}</td>
-                  <td>{e.building_name || `#${e.building_id}`}</td>
+                  <td>{e.building_name || buildingName(e.building_id)}</td>
                   <td>
                     {e.brand} {e.model}
                   </td>
                   <td>{e.state}</td>
                   <td style={{ textAlign: "right" }}>
-                    <button className="btn-small" onClick={() => handleEdit(e)}>
+                    <button
+                      className="button sm secondary"
+                      type="button"
+                      onClick={() => handleEdit(e)}
+                    >
                       Edit
                     </button>{" "}
                     <button
-                      className="btn-small danger"
+                      className="button sm danger"
+                      type="button"
                       onClick={() => handleDelete(e.id)}
                     >
                       Delete
@@ -343,7 +378,7 @@ export default function Elevators() {
               ))}
               {elevators.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center" }}>
+                  <td colSpan={6} className="text-center">
                     No elevators.
                   </td>
                 </tr>
@@ -352,6 +387,8 @@ export default function Elevators() {
           </table>
         </div>
       )}
+
+      {loading && <div className="card">Loading elevators...</div>}
     </div>
   );
 }

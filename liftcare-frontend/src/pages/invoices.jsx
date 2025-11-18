@@ -31,9 +31,9 @@ export default function Invoices() {
         api.get("/api/customers"),
         api.get("/api/quotations"),
       ]);
-      setInvoices(inv);
-      setCustomers(cs);
-      setQuotations(qs);
+      setInvoices(inv || []);
+      setCustomers(cs || []);
+      setQuotations(qs || []);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load invoices");
@@ -110,7 +110,7 @@ export default function Invoices() {
   async function handleDelete(id) {
     if (!window.confirm("ต้องการลบใบแจ้งหนี้นี้ใช่หรือไม่?")) return;
     try {
-      await api.del(`/api/invoices/${id}`);
+      await api.delete(`/api/invoices/${id}`); // แก้จาก api.del
       await loadData();
     } catch (err) {
       console.error(err);
@@ -134,17 +134,35 @@ export default function Invoices() {
     return q ? q.quotation_code : `#${quotation_id}`;
   }
 
+  function renderStatusLabel(status) {
+    if (!status) return "Unpaid";
+    const s = String(status).toLowerCase();
+    if (s === "unpaid") return "Unpaid";
+    if (s === "partial") return "Partial";
+    if (s === "paid") return "Paid";
+    if (s === "cancelled") return "Cancelled";
+    return status;
+  }
+
   return (
     <div>
-      <h2>Invoices</h2>
+      {/* หัวหน้าเพจ */}
+      <div className="app-page-header">
+        <h2 className="app-page-title">Invoices</h2>
+        <p className="app-page-subtitle">
+          จัดการใบแจ้งหนี้จากใบเสนอราคา และสถานะการชำระเงินของลูกค้า
+        </p>
+      </div>
 
       {/* ฟอร์ม */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">
-          {editingId ? "Edit Invoice" : "New Invoice"}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">
+            {editingId ? "Edit Invoice" : "New Invoice"}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 8 }}>
+        <form onSubmit={handleSubmit}>
           <label>
             Customer *
             <select
@@ -179,8 +197,9 @@ export default function Invoices() {
             </select>
           </label>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* Invoice code + Due date */}
+          <div className="form-row">
+            <div>
               <label>
                 Invoice Code
                 <input
@@ -192,7 +211,7 @@ export default function Invoices() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Due Date
                 <input
@@ -206,8 +225,9 @@ export default function Invoices() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* Amounts */}
+          <div className="form-row">
+            <div>
               <label>
                 Total Amount
                 <input
@@ -219,7 +239,7 @@ export default function Invoices() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Paid Amount
                 <input
@@ -233,6 +253,7 @@ export default function Invoices() {
             </div>
           </div>
 
+          {/* Status */}
           <label>
             Status
             <select
@@ -248,14 +269,15 @@ export default function Invoices() {
             </select>
           </label>
 
+          {/* ปุ่ม */}
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="btn-primary">
+            <button type="submit" className="button primary">
               {editingId ? "Save Changes" : "Create"}
             </button>
             {editingId && (
               <button
                 type="button"
-                className="btn-outline"
+                className="button secondary"
                 onClick={handleCancel}
               >
                 Cancel
@@ -268,9 +290,12 @@ export default function Invoices() {
       {/* ตาราง */}
       {loading && <div className="card">Loading...</div>}
       {error && <div className="card error">{error}</div>}
+
       {!loading && !error && (
         <div className="card">
-          <div className="card-title">Invoice List</div>
+          <div className="card-header">
+            <div className="card-title">Invoice List</div>
+          </div>
           <table className="table">
             <thead>
               <tr>
@@ -278,31 +303,33 @@ export default function Invoices() {
                 <th>Customer</th>
                 <th>Quotation</th>
                 <th>Status</th>
-                <th>Total / Paid</th>
-                <th>Due</th>
-                <th />
+                <th>Total</th>
+                <th>Paid</th>
+                <th style={{ width: 130 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {invoices.map((i) => (
                 <tr key={i.id}>
                   <td>{i.invoice_code}</td>
-                  <td>{i.customer_name || renderCustomerName(i.customer_id)}</td>
-                  <td>{renderQuotationCode(i.quotation_id)}</td>
-                  <td>{i.status}</td>
                   <td>
-                    {i.total_amount} / {i.paid_amount}
+                    {i.customer_name || renderCustomerName(i.customer_id)}
                   </td>
-                  <td>{i.due_date?.slice(0, 10)}</td>
+                  <td>{renderQuotationCode(i.quotation_id)}</td>
+                  <td>{renderStatusLabel(i.status)}</td>
+                  <td>{i.total_amount}</td>
+                  <td>{i.paid_amount}</td>
                   <td style={{ textAlign: "right" }}>
                     <button
-                      className="btn-small"
+                      type="button"
+                      className="button sm secondary"
                       onClick={() => handleEdit(i)}
                     >
                       Edit
                     </button>{" "}
                     <button
-                      className="btn-small danger"
+                      type="button"
+                      className="button sm danger"
                       onClick={() => handleDelete(i.id)}
                     >
                       Delete
@@ -312,7 +339,7 @@ export default function Invoices() {
               ))}
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center" }}>
+                  <td colSpan={7} className="text-center">
                     No invoices.
                   </td>
                 </tr>

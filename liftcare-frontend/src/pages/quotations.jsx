@@ -72,8 +72,9 @@ export default function Quotations() {
       if (editingId) {
         await api.put(`/api/quotations/${editingId}`, {
           quotation_code:
-            payload.quotation_code || form.quotation_code || `Q-${Date.now()}`,
-          // PUT ต้องมี code แน่นอน
+            payload.quotation_code ||
+            form.quotation_code ||
+            `Q-${Date.now()}`, // PUT ต้องมี code แน่นอน
           customer_id: payload.customer_id,
           contract_id: payload.contract_id,
           ticket_id: payload.ticket_id,
@@ -108,7 +109,7 @@ export default function Quotations() {
   async function handleDelete(id) {
     if (!window.confirm("ต้องการลบใบเสนอราคานี้ใช่หรือไม่?")) return;
     try {
-      await api.del(`/api/quotations/${id}`);
+      await api.delete(`/api/quotations/${id}`);
       await loadData();
     } catch (err) {
       console.error(err);
@@ -134,15 +135,21 @@ export default function Quotations() {
 
   return (
     <div>
-      <h2>Quotations</h2>
+      {/* หัวหน้าเพจ */}
+      <div className="app-page-header">
+        <h2 className="app-page-title">Quotations</h2>
+        <p className="app-page-subtitle">
+          จัดการใบเสนอราคาให้ลูกค้า พร้อมสถานะการส่ง / อนุมัติ
+        </p>
+      </div>
 
       {/* ฟอร์ม */}
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card">
         <div className="card-title">
           {editingId ? "Edit Quotation" : "New Quotation"}
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 8 }}>
+        <form onSubmit={handleSubmit}>
           <label>
             Customer *
             <select
@@ -160,8 +167,9 @@ export default function Quotations() {
             </select>
           </label>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* Contract + Quotation Code */}
+          <div className="form-row">
+            <div>
               <label>
                 Contract
                 <select
@@ -179,7 +187,7 @@ export default function Quotations() {
                 </select>
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Quotation Code
                 <input
@@ -193,6 +201,7 @@ export default function Quotations() {
             </div>
           </div>
 
+          {/* Ticket ID */}
           <label>
             Ticket ID (อ้างอิงใบแจ้งซ่อม ถ้ามี)
             <input
@@ -203,8 +212,9 @@ export default function Quotations() {
             />
           </label>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* Status + Total */}
+          <div className="form-row">
+            <div>
               <label>
                 Status
                 <select
@@ -220,7 +230,7 @@ export default function Quotations() {
                 </select>
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Total Amount
                 <input
@@ -235,13 +245,13 @@ export default function Quotations() {
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="btn-primary">
+            <button type="submit" className="button primary">
               {editingId ? "Save Changes" : "Create"}
             </button>
             {editingId && (
               <button
                 type="button"
-                className="btn-outline"
+                className="button secondary"
                 onClick={handleCancel}
               >
                 Cancel
@@ -254,6 +264,7 @@ export default function Quotations() {
       {/* ตาราง */}
       {loading && <div className="card">Loading...</div>}
       {error && <div className="card error">{error}</div>}
+
       {!loading && !error && (
         <div className="card">
           <div className="card-title">Quotation List</div>
@@ -272,19 +283,23 @@ export default function Quotations() {
               {quotations.map((q) => (
                 <tr key={q.id}>
                   <td>{q.quotation_code}</td>
-                  <td>{q.customer_name || renderCustomerName(q.customer_id)}</td>
+                  <td>
+                    {q.customer_name || renderCustomerName(q.customer_id)}
+                  </td>
                   <td>{renderContractCode(q.contract_id)}</td>
                   <td>{q.status}</td>
                   <td>{q.total_amount}</td>
                   <td style={{ textAlign: "right" }}>
                     <button
-                      className="btn-small"
+                      className="button-sm-secondary"
+                      type="button"
                       onClick={() => handleEdit(q)}
                     >
                       Edit
                     </button>{" "}
                     <button
-                      className="btn-small danger"
+                      className="button sm danger"
+                      type="button"
                       onClick={() => handleDelete(q.id)}
                     >
                       Delete
@@ -294,7 +309,7 @@ export default function Quotations() {
               ))}
               {quotations.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center" }}>
+                  <td colSpan={6} className="text-center">
                     No quotations.
                   </td>
                 </tr>

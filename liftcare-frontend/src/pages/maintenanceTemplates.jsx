@@ -42,21 +42,17 @@ export default function MaintenanceTemplates() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     if (!form.name) {
       alert("กรุณากรอก Template Name");
       return;
     }
 
-    const payload = {
-      name: form.name,
-      description: form.description || null,
-    };
-
     try {
       if (editingId) {
-        await api.put(`/api/maintenance/templates/${editingId}`, payload);
+        await api.put(`/api/maintenance/templates/${editingId}`, form);
       } else {
-        await api.post("/api/maintenance/templates", payload);
+        await api.post("/api/maintenance/templates", form);
       }
       setForm(emptyForm);
       setEditingId(null);
@@ -78,7 +74,7 @@ export default function MaintenanceTemplates() {
   async function handleDelete(id) {
     if (!window.confirm("ต้องการลบ Template นี้ใช่หรือไม่?")) return;
     try {
-      await api.del(`/api/maintenance/templates/${id}`);
+      await api.delete(`/api/maintenance/templates/${id}`);
       await loadTemplates();
     } catch (err) {
       console.error(err);
@@ -93,18 +89,21 @@ export default function MaintenanceTemplates() {
 
   return (
     <div>
-      <h2>Maintenance Templates</h2>
+      {/* หัวหน้าเพจ */}
+      <div className="app-page-header">
+        <h2 className="app-page-title">Maintenance Templates</h2>
+        <p className="app-page-subtitle">
+          ตั้งชุดรายการตรวจเช็ค / งานบำรุงมาตรฐาน เพื่อใช้กับ Maintenance Plans
+        </p>
+      </div>
 
       {/* ฟอร์มสร้าง/แก้ไข */}
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card">
         <div className="card-title">
           {editingId ? "Edit Template" : "New Template"}
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: "grid", gap: 8 }}
-        >
+        <form onSubmit={handleSubmit}>
           <label>
             Template Name *
             <input
@@ -126,14 +125,14 @@ export default function MaintenanceTemplates() {
             />
           </label>
 
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <button type="submit" className="button primary">
               {editingId ? "Update" : "Create"}
             </button>
             {editingId && (
               <button
                 type="button"
-                className="button"
+                className="button secondary"
                 onClick={handleCancel}
               >
                 Cancel
@@ -166,18 +165,17 @@ export default function MaintenanceTemplates() {
                   <td>{t.id}</td>
                   <td>{t.name}</td>
                   <td>{t.description || "-"}</td>
-                  <td>
+                  <td style={{ textAlign: "right" }}>
                     <button
                       type="button"
-                      className="button"
+                      className="button sm secondary"
                       onClick={() => handleEdit(t)}
-                      style={{ marginRight: 4 }}
                     >
                       Edit
-                    </button>
+                    </button>{" "}
                     <button
                       type="button"
-                      className="button danger"
+                      className="button sm danger"
                       onClick={() => handleDelete(t.id)}
                     >
                       Delete
@@ -187,7 +185,7 @@ export default function MaintenanceTemplates() {
               ))}
               {templates.length === 0 && (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: "center" }}>
+                  <td colSpan={4} className="text-center">
                     No templates.
                   </td>
                 </tr>

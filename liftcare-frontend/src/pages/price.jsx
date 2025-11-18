@@ -76,7 +76,13 @@ export default function PricingSettings() {
 
   return (
     <div>
-      <h2>Pricing Settings</h2>
+      {/* หัวหน้าเพจ */}
+      <div className="app-page-header">
+        <h2 className="app-page-title">Pricing Settings</h2>
+        <p className="app-page-subtitle">
+          ตั้งค่าค่าเรียกช่าง อัตราค่าแรงต่อชั่วโมง และส่วนเพิ่มราคาอะไหล่ของระบบ
+        </p>
+      </div>
 
       {loading ? (
         <div className="card">Loading...</div>
@@ -85,51 +91,68 @@ export default function PricingSettings() {
           <div className="card-title">Global Pricing Configuration</div>
           {error && <div className="card error">{error}</div>}
 
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: 8 }}>
-            <label>
-              Call Fee (ค่าเรียกช่าง)
-              <input
-                type="number"
-                name="call_fee"
-                value={settings.call_fee}
-                onChange={handleChange}
-                className="input"
-              />
-            </label>
+          <form onSubmit={handleSubmit}>
+            {/* แถว Call fee + Labor rate */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Call Fee (ค่าเรียกช่าง)
+                  <input
+                    type="number"
+                    name="call_fee"
+                    value={settings.call_fee}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Labor Rate per Hour (ค่าแรง/ชม.)
+                  <input
+                    type="number"
+                    name="labor_rate_per_hour"
+                    value={settings.labor_rate_per_hour}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
 
-            <label>
-              Labor Rate per Hour (ค่าแรง/ชั่วโมง)
-              <input
-                type="number"
-                name="labor_rate_per_hour"
-                value={settings.labor_rate_per_hour}
-                onChange={handleChange}
-                className="input"
-              />
-            </label>
+            {/* แถว Markup + Currency */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Parts Markup (%) (เปอร์เซ็นต์บวกค่าอะไหล่)
+                  <input
+                    type="number"
+                    name="parts_markup_percent"
+                    value={settings.parts_markup_percent}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Currency
+                  <input
+                    name="currency"
+                    value={settings.currency}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
 
-            <label>
-              Parts Markup (%) (กำไรอะไหล่ %)
-              <input
-                type="number"
-                name="parts_markup_percent"
-                value={settings.parts_markup_percent}
-                onChange={handleChange}
-                className="input"
-              />
-            </label>
-
-            <label>
-              Currency
-              <input
-                name="currency"
-                value={settings.currency}
-                onChange={handleChange}
-                className="input"
-              />
-            </label>
-
-            <button type="submit" className="btn-primary" disabled={saving}>
+            <button
+              type="submit"
+              className="button primary"
+              disabled={saving}
+              style={{ marginTop: 8 }}
+            >
               {saving ? "Saving..." : "Save Settings"}
             </button>
           </form>

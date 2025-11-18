@@ -31,8 +31,8 @@ export default function Contracts() {
         api.get("/api/customers"),
         api.get("/api/contracts"),
       ]);
-      setCustomers(cs);
-      setContracts(ct);
+      setCustomers(cs || []);
+      setContracts(ct || []);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load contracts");
@@ -96,7 +96,8 @@ export default function Contracts() {
   function handleEdit(c) {
     setEditingId(c.id);
     setForm({
-      customer_id: c.customer_id,
+      customer_id:
+        c.customer_id != null ? String(c.customer_id) : "",
       contract_code: c.contract_code || "",
       contract_type: c.contract_type || "annual",
       start_date: c.start_date ? c.start_date.slice(0, 10) : "",
@@ -115,7 +116,7 @@ export default function Contracts() {
   async function handleDelete(id) {
     if (!window.confirm("ต้องการลบสัญญานี้ใช่หรือไม่?")) return;
     try {
-      await api.del(`/api/contracts/${id}`);
+      await api.delete(`/api/contracts/${id}`);
       await loadData();
     } catch (err) {
       console.error(err);
@@ -141,15 +142,24 @@ export default function Contracts() {
 
   return (
     <div>
-      <h2>Contracts</h2>
+      {/* หัวหน้าเพจ */}
+      <div className="app-page-header">
+        <h2 className="app-page-title">Contracts</h2>
+        <p className="app-page-subtitle">
+          จัดการสัญญาบำรุงรักษา (รายปี / จ่ายต่อครั้ง) ของลูกค้า
+        </p>
+      </div>
 
       {/* ฟอร์มสร้าง/แก้ไขสัญญา */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">
-          {editingId ? "Edit Contract" : "New Contract"}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">
+            {editingId ? "Edit Contract" : "New Contract"}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 8 }}>
+        <form onSubmit={handleSubmit}>
+          {/* แถว Customer */}
           <label>
             Customer *
             <select
@@ -167,8 +177,9 @@ export default function Contracts() {
             </select>
           </label>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* แถว Code + Type */}
+          <div className="form-row">
+            <div>
               <label>
                 Contract Code *
                 <input
@@ -180,7 +191,7 @@ export default function Contracts() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Contract Type *
                 <select
@@ -196,8 +207,9 @@ export default function Contracts() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* แถว Start / End date */}
+          <div className="form-row">
+            <div>
               <label>
                 Start Date *
                 <input
@@ -209,7 +221,7 @@ export default function Contracts() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 End Date *
                 <input
@@ -218,13 +230,15 @@ export default function Contracts() {
                   value={form.end_date}
                   onChange={handleChange}
                   className="input"
+                  min={form.start_date || undefined}
                 />
               </label>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* แถว Maint/year + Notify before */}
+          <div className="form-row">
+            <div>
               <label>
                 Maintenance / Year
                 <input
@@ -237,7 +251,7 @@ export default function Contracts() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Notify Before (days)
                 <input
@@ -251,6 +265,7 @@ export default function Contracts() {
             </div>
           </div>
 
+          {/* Included / Excluded */}
           <label>
             Included Items
             <textarea
@@ -275,14 +290,15 @@ export default function Contracts() {
             />
           </label>
 
+          {/* ปุ่ม */}
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="btn-primary">
+            <button type="submit" className="button primary">
               {editingId ? "Save Changes" : "Create"}
             </button>
             {editingId && (
               <button
                 type="button"
-                className="btn-outline"
+                className="button secondary"
                 onClick={handleCancel}
               >
                 Cancel
@@ -295,9 +311,12 @@ export default function Contracts() {
       {/* ตารางสัญญา */}
       {loading && <div className="card">Loading...</div>}
       {error && <div className="card error">{error}</div>}
+
       {!loading && !error && (
         <div className="card">
-          <div className="card-title">Contract List</div>
+          <div className="card-header">
+            <div className="card-title">Contract List</div>
+          </div>
           <table className="table">
             <thead>
               <tr>
@@ -306,14 +325,16 @@ export default function Contracts() {
                 <th>Type</th>
                 <th>Period</th>
                 <th>Maint./Year</th>
-                <th />
+                <th style={{ width: 130 }} />
               </tr>
             </thead>
             <tbody>
               {contracts.map((c) => (
                 <tr key={c.id}>
                   <td>{c.contract_code}</td>
-                  <td>{c.customer_name || renderCustomerName(c.customer_id)}</td>
+                  <td>
+                    {c.customer_name || renderCustomerName(c.customer_id)}
+                  </td>
                   <td>{renderTypeLabel(c.contract_type)}</td>
                   <td>
                     {c.start_date?.slice(0, 10)} -{" "}
@@ -322,13 +343,15 @@ export default function Contracts() {
                   <td>{c.maintenance_times_per_year}</td>
                   <td style={{ textAlign: "right" }}>
                     <button
-                      className="btn-small"
+                      type="button"
+                      className="button sm secondary"
                       onClick={() => handleEdit(c)}
                     >
                       Edit
                     </button>{" "}
                     <button
-                      className="btn-small danger"
+                      type="button"
+                      className="button sm danger"
                       onClick={() => handleDelete(c.id)}
                     >
                       Delete
@@ -338,7 +361,7 @@ export default function Contracts() {
               ))}
               {contracts.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center" }}>
+                  <td colSpan={6} className="text-center">
                     No contracts.
                   </td>
                 </tr>

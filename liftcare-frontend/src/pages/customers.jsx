@@ -1,6 +1,6 @@
 // src/pages/Customers.jsx
 import { useEffect, useState } from "react";
-import { useApi } from "../api";
+import { useApi } from "../api"; // api.js อยู่ข้างนอกโฟลเดอร์ pages
 
 const emptyForm = {
   name: "",
@@ -24,7 +24,7 @@ export default function Customers() {
       setLoading(true);
       setError("");
       const data = await api.get("/api/customers");
-      setCustomers(data);
+      setCustomers(data || []);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load customers");
@@ -79,7 +79,7 @@ export default function Customers() {
   async function handleDelete(id) {
     if (!window.confirm("ต้องการลบลูกค้ารายนี้ใช่หรือไม่?")) return;
     try {
-      await api.del(`/api/customers/${id}`);
+      await api.delete(`/api/customers/${id}`); // ใช้ delete ให้ตรงกับ useApi
       await loadCustomers();
     } catch (err) {
       console.error(err);
@@ -94,16 +94,28 @@ export default function Customers() {
 
   return (
     <div>
-      <h2>Customers</h2>
+      {/* หัวหน้าเพจ */}
+      <div className="app-page-header">
+        <h2 className="app-page-title">Customers</h2>
+        <p className="app-page-subtitle">
+          จัดการข้อมูลลูกค้า (ชื่อองค์กร / ประเภทธุรกิจ / ผู้ติดต่อ / เบอร์โทร)
+        </p>
+      </div>
+
+      {error && <div className="card error">{error}</div>}
 
       {/* ฟอร์มสร้าง/แก้ไข */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">
-          {editingId ? "Edit Customer" : "New Customer"}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">
+            {editingId ? "Edit Customer" : "New Customer"}
+          </div>
         </div>
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 8 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+
+        <form onSubmit={handleSubmit}>
+          {/* แถว Name + Business Type */}
+          <div className="form-row">
+            <div>
               <label>
                 Name *
                 <input
@@ -114,7 +126,7 @@ export default function Customers() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Business Type *
                 <input
@@ -122,24 +134,27 @@ export default function Customers() {
                   value={form.business_type}
                   onChange={handleChange}
                   className="input"
-                  placeholder="office / mall / hospital / condo..."
+                  placeholder="เช่น Building Owner, FM Company ฯลฯ"
                 />
               </label>
             </div>
           </div>
 
+          {/* Address */}
           <label>
             Address
-            <input
+            <textarea
               name="address"
               value={form.address}
               onChange={handleChange}
               className="input"
+              rows={2}
             />
           </label>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
+          {/* แถว Contact Name + Phone */}
+          <div className="form-row">
+            <div>
               <label>
                 Contact Name
                 <input
@@ -150,7 +165,7 @@ export default function Customers() {
                 />
               </label>
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <label>
                 Contact Phone
                 <input
@@ -163,6 +178,7 @@ export default function Customers() {
             </div>
           </div>
 
+          {/* Email */}
           <label>
             Contact Email
             <input
@@ -174,14 +190,15 @@ export default function Customers() {
             />
           </label>
 
+          {/* ปุ่ม */}
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="btn-primary">
-              {editingId ? "Save Changes" : "Create"}
+            <button type="submit" className="button primary">
+              {editingId ? "Save" : "Create"}
             </button>
             {editingId && (
               <button
                 type="button"
-                className="btn-outline"
+                className="button secondary"
                 onClick={handleCancelEdit}
               >
                 Cancel
@@ -192,18 +209,18 @@ export default function Customers() {
       </div>
 
       {/* ตารางลูกค้า */}
-      {loading && <div className="card">Loading...</div>}
-      {error && <div className="card error">{error}</div>}
-      {!loading && !error && (
+      {!loading && (
         <div className="card">
-          <div className="card-title">Customer List</div>
+          <div className="card-header">
+            <div className="card-title">Customer List</div>
+          </div>
           <table className="table">
             <thead>
               <tr>
                 <th>Name</th>
                 <th>Business Type</th>
                 <th>Contact</th>
-                <th />
+                <th style={{ width: 140 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -217,7 +234,12 @@ export default function Customers() {
                     {c.contact_email && (
                       <>
                         <br />
-                        <span style={{ fontSize: 12, color: "#6b7280" }}>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "var(--color-gray)",
+                          }}
+                        >
                           {c.contact_email}
                         </span>
                       </>
@@ -225,13 +247,15 @@ export default function Customers() {
                   </td>
                   <td style={{ textAlign: "right" }}>
                     <button
-                      className="btn-small"
+                      className="button sm secondary"
+                      type="button"
                       onClick={() => handleEdit(c)}
                     >
                       Edit
                     </button>{" "}
                     <button
-                      className="btn-small danger"
+                      className="button sm danger"
+                      type="button"
                       onClick={() => handleDelete(c.id)}
                     >
                       Delete
@@ -241,7 +265,7 @@ export default function Customers() {
               ))}
               {customers.length === 0 && (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: "center" }}>
+                  <td colSpan={4} className="text-center">
                     No customers.
                   </td>
                 </tr>
@@ -250,6 +274,8 @@ export default function Customers() {
           </table>
         </div>
       )}
+
+      {loading && <div className="card">Loading customers...</div>}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApi } from "../api";
 import { useAuth } from "../auth";
@@ -12,7 +12,10 @@ export default function Login() {
   const nav = useNavigate();
 
   // ถ้าเข้าสู่ระบบแล้ว ให้ไปหน้า main ทันที
+  useEffect(() => {
   if (isAuthed) nav("/");
+}, [isAuthed]);
+
 
   const onSubmit = async (e) => {
     e.preventDefault();

@@ -1,12 +1,12 @@
 // ---- Parts Routes ----
 import express from "express";
 import pool from "../DB/db.js";
-import authRequired from "../Auth/middle.js";
+import authRequired, { roleRequired } from "../Auth/middle.js";
 
 const router = express.Router();
 
 // อะไหล่
-router.get("/parts", authRequired, async (req, res) => {
+router.get("/parts", authRequired, roleRequired(["admin", "technician"]), async (req, res) => {
 	try {
 		const [rows] = await pool.query('SELECT * FROM parts ORDER BY id DESC');
 		res.json(rows);
@@ -17,7 +17,7 @@ router.get("/parts", authRequired, async (req, res) => {
 });
 
 // สร้างอะไหล่ใหม่
-router.post("/parts", authRequired, async (req, res) => {
+router.post("/parts", authRequired, roleRequired(["admin", "manager"]) , async (req, res) => {
   const {
     part_code,
     name,
@@ -63,7 +63,7 @@ router.post("/parts", authRequired, async (req, res) => {
 });
 
 // แก้ไขอะไหล่
-router.put("/parts/:id", authRequired, async (req, res) => {
+router.put("/parts/:id", authRequired, roleRequired(["admin", "manager"]), async (req, res) => {
   const { id } = req.params;
   const {
     part_code,
@@ -123,7 +123,7 @@ router.put("/parts/:id", authRequired, async (req, res) => {
 });
 
 // ลบอะไหล่
-router.delete("/parts/:id", authRequired, async (req, res) => {
+router.delete("/parts/:id", authRequired, roleRequired(["admin", "manager"]), async (req, res) => {
   const { id } = req.params;
   try {
     const [result] = await pool.query("DELETE FROM parts WHERE id = ?", [
@@ -140,7 +140,7 @@ router.delete("/parts/:id", authRequired, async (req, res) => {
 });
 
 // สต๊อก
-router.get("/parts/stocks", authRequired, async (req, res) => {
+router.get("/parts/stocks", authRequired, roleRequired(["admin", "technician"]), async (req, res) => {
   try {
     const [rows] = await pool.query(
       `
@@ -162,7 +162,7 @@ router.get("/parts/stocks", authRequired, async (req, res) => {
   }
 });
 
-router.post("/parts/stocks/adjust", authRequired, async (req, res) => {
+router.post("/parts/stocks/adjust", authRequired, roleRequired("admin"), async (req, res) => {
   const { part_id, change_qty, note } = req.body || {};
 
   if (!part_id || change_qty == null) {
@@ -194,7 +194,7 @@ router.post("/parts/stocks/adjust", authRequired, async (req, res) => {
 });
 
 // movement
-router.get("/parts/movements", authRequired, async (req, res) => {
+router.get("/parts/movements", authRequired, roleRequired(["admin", "technician"]), async (req, res) => {
   try {
     const [rows] = await pool.query(
       `
