@@ -1,6 +1,7 @@
 // src/pages/maintenancePlans.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
 
 const emptyForm = {
   elevator_id: "",
@@ -13,6 +14,7 @@ const emptyForm = {
 
 export default function MaintenancePlans() {
   const api = useApi();
+  const userRole = useRoleCheck();
 
   const [plans, setPlans] = useState([]);
   const [elevators, setElevators] = useState([]);
@@ -121,216 +123,218 @@ export default function MaintenancePlans() {
   }
 
   return (
-    <div>
-      {/* หัวหน้าเพจ */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Maintenance Plans</h2>
-        <p className="app-page-subtitle">
-          ตั้งรอบ PM ให้แต่ละลิฟต์ตามสัญญาและ Template
-        </p>
-      </div>
-
-      {/* ฟอร์ม */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            {editingId ? "Edit Plan" : "New Plan"}
-          </div>
+    <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
+      <div>
+        {/* หัวหน้าเพจ */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Maintenance Plans</h2>
+          <p className="app-page-subtitle">
+            ตั้งรอบ PM ให้แต่ละลิฟต์ตามสัญญาและ Template
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Elevator */}
-          <label>
-            Elevator *
-            <select
-              name="elevator_id"
-              value={form.elevator_id}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="">-- Select elevator --</option>
-              {elevators.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.id} - {e.name} ({e.building_name})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Contract + Template */}
-          <div className="form-row">
-            <div>
-              <label>
-                Contract
-                <select
-                  name="contract_id"
-                  value={form.contract_id}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="">-- None --</option>
-                  {contracts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.contract_code} - {c.customer_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div>
-              <label>
-                Template *
-                <select
-                  name="template_id"
-                  value={form.template_id}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="">-- Select template --</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+        {/* ฟอร์ม */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">
+              {editingId ? "Edit Plan" : "New Plan"}
             </div>
           </div>
 
-          {/* Frequency / next run */}
-          <div className="form-row">
-            <div>
-              <label>
-                Frequency per year *
-                <input
-                  type="number"
-                  name="frequency_per_year"
-                  value={form.frequency_per_year}
-                  onChange={handleChange}
-                  className="input"
-                  min={1}
-                />
-              </label>
-            </div>
-            <div>
-              <label>
-                Next run at
-                <input
-                  type="date"
-                  name="next_run_at"
-                  value={form.next_run_at}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* Active checkbox */}
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="checkbox"
-              name="is_active"
-              checked={form.is_active}
-              onChange={handleChange}
-            />
-            Active
-          </label>
-
-          {/* ปุ่ม */}
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="button primary">
-              {editingId ? "Save Changes" : "Create"}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="button secondary"
-                onClick={handleCancel}
+          <form onSubmit={handleSubmit}>
+            {/* Elevator */}
+            <label>
+              Elevator *
+              <select
+                name="elevator_id"
+                value={form.elevator_id}
+                onChange={handleChange}
+                className="input"
               >
-                Cancel
+                <option value="">-- Select elevator --</option>
+                {elevators.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.id} - {e.name} ({e.building_name})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {/* Contract + Template */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Contract
+                  <select
+                    name="contract_id"
+                    value={form.contract_id}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="">-- None --</option>
+                    {contracts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.contract_code} - {c.customer_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div>
+                <label>
+                  Template *
+                  <select
+                    name="template_id"
+                    value={form.template_id}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="">-- Select template --</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {/* Frequency / next run */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Frequency per year *
+                  <input
+                    type="number"
+                    name="frequency_per_year"
+                    value={form.frequency_per_year}
+                    onChange={handleChange}
+                    className="input"
+                    min={1}
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Next run at
+                  <input
+                    type="date"
+                    name="next_run_at"
+                    value={form.next_run_at}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Active checkbox */}
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="checkbox"
+                name="is_active"
+                checked={form.is_active}
+                onChange={handleChange}
+              />
+              Active
+            </label>
+
+            {/* ปุ่ม */}
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button type="submit" className="button primary">
+                {editingId ? "Save Changes" : "Create"}
               </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* ตาราง */}
-      <div className="card">
-        <div className="card-title">Maintenance Plan List</div>
-
-        {loading && <div>Loading...</div>}
-        {error && <div className="card error">{error}</div>}
-
-        {!loading && !error && (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Elevator</th>
-                <th>Template</th>
-                <th>Contract</th>
-                <th>Freq/Year</th>
-                <th>Next run</th>
-                <th>Last run</th>
-                <th>Active</th>
-                <th style={{ width: 150 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plans.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    {p.elevator_id} - {p.elevator_name}{" "}
-                    {p.building_name ? `(${p.building_name})` : ""}
-                  </td>
-                  <td>{p.template_name}</td>
-                  <td>
-                    {p.contract_code
-                      ? `${p.contract_code} - ${p.customer_name || ""}`
-                      : "-"}
-                  </td>
-                  <td>{p.frequency_per_year}</td>
-                  <td>
-                    {p.next_run_at
-                      ? new Date(p.next_run_at).toLocaleDateString()
-                      : "-"}
-                  </td>
-                  <td>
-                    {p.last_run_at
-                      ? new Date(p.last_run_at).toLocaleDateString()
-                      : "-"}
-                  </td>
-                  <td>{p.is_active ? "Yes" : "No"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      className="button sm secondary"
-                      onClick={() => handleEdit(p)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="button sm danger"
-                      onClick={() => handleDelete(p.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {plans.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="text-center">
-                    No maintenance plans.
-                  </td>
-                </tr>
+              {editingId && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
               )}
-            </tbody>
-          </table>
-        )}
+            </div>
+          </form>
+        </div>
+
+        {/* ตาราง */}
+        <div className="card">
+          <div className="card-title">Maintenance Plan List</div>
+
+          {loading && <div>Loading...</div>}
+          {error && <div className="card error">{error}</div>}
+
+          {!loading && !error && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Elevator</th>
+                  <th>Template</th>
+                  <th>Contract</th>
+                  <th>Freq/Year</th>
+                  <th>Next run</th>
+                  <th>Last run</th>
+                  <th>Active</th>
+                  <th style={{ width: 150 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plans.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      {p.elevator_id} - {p.elevator_name}{" "}
+                      {p.building_name ? `(${p.building_name})` : ""}
+                    </td>
+                    <td>{p.template_name}</td>
+                    <td>
+                      {p.contract_code
+                        ? `${p.contract_code} - ${p.customer_name || ""}`
+                        : "-"}
+                    </td>
+                    <td>{p.frequency_per_year}</td>
+                    <td>
+                      {p.next_run_at
+                        ? new Date(p.next_run_at).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td>
+                      {p.last_run_at
+                        ? new Date(p.last_run_at).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td>{p.is_active ? "Yes" : "No"}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="button sm secondary"
+                        onClick={() => handleEdit(p)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="button sm danger"
+                        onClick={() => handleDelete(p.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {plans.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="text-center">
+                      No maintenance plans.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-    </div>
+    </ProtectedPage>
   );
 }

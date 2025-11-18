@@ -1,6 +1,7 @@
 // src/pages/maintenanceJobs.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
 
 const emptyForm = {
   elevator_id: "",
@@ -16,6 +17,7 @@ const emptyForm = {
 
 export default function MaintenanceJobs() {
   const api = useApi();
+  const userRole = useRoleCheck();
 
   const [jobs, setJobs] = useState([]);
   const [elevators, setElevators] = useState([]);
@@ -168,260 +170,262 @@ export default function MaintenanceJobs() {
   }
 
   return (
-    <div>
-      {/* หัวหน้าเพจ */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Maintenance Jobs</h2>
-        <p className="app-page-subtitle">
-          บันทึกและติดตามงานบำรุง / ซ่อมฉุกเฉินของลิฟต์แต่ละตัว
-        </p>
-      </div>
-
-      {error && <div className="card error">{error}</div>}
-
-      {/* ฟอร์มสร้าง / แก้ไขงาน */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            {editingId ? "Edit Job" : "New Job"}
-          </div>
+    <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
+      <div>
+        {/* หัวหน้าเพจ */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Maintenance Jobs</h2>
+          <p className="app-page-subtitle">
+            บันทึกและติดตามงานบำรุง / ซ่อมฉุกเฉินของลิฟต์แต่ละตัว
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Elevator / Type */}
-          <div className="form-row">
-            <div>
-              <label>
-                Elevator *
-                <select
-                  name="elevator_id"
-                  value={form.elevator_id}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="">-- select elevator --</option>
-                  {elevators.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.id} - {e.name}{" "}
-                      {e.building_name ? `(${e.building_name})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div>
-              <label>
-                Job Type
-                <select
-                  name="job_type"
-                  value={form.job_type}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="planned">Planned</option>
-                  <option value="emergency">Emergency</option>
-                </select>
-              </label>
-            </div>
-          </div>
+        {error && <div className="card error">{error}</div>}
 
-          {/* Technician / Contract */}
-          <div className="form-row">
-            <div>
-              <label>
-                Technician
-                <select
-                  name="technician_id"
-                  value={form.technician_id}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="">-- not assigned --</option>
-                  {technicians.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div>
-              <label>
-                Contract
-                <select
-                  name="contract_id"
-                  value={form.contract_id}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="">-- none --</option>
-                  {contracts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.contract_code} - {c.customer_name || ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
-
-          {/* Ticket ID */}
-          <label>
-            Ticket ID
-            <input
-              name="ticket_id"
-              value={form.ticket_id}
-              onChange={handleChange}
-              className="input"
-              placeholder="เชื่อมกับ ticket ถ้ามี"
-            />
-          </label>
-
-          {/* Remarks */}
-          <label>
-            Remarks
-            <textarea
-              name="remarks"
-              value={form.remarks}
-              onChange={handleChange}
-              className="input"
-              rows={2}
-              placeholder="รายละเอียดอาการ / งานที่ทำ"
-            />
-          </label>
-
-          {/* เวลาและค่าใช้จ่าย */}
-          <div className="form-row">
-            <div>
-              <label>
-                Labor Hours
-                <input
-                  type="number"
-                  step="0.25"
-                  name="total_labor_hours"
-                  value={form.total_labor_hours}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-            <div>
-              <label>
-                Labor Cost
-                <input
-                  type="number"
-                  step="0.01"
-                  name="labor_cost"
-                  value={form.labor_cost}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div>
-              <label>
-                Parts Cost
-                <input
-                  type="number"
-                  step="0.01"
-                  name="parts_cost"
-                  value={form.parts_cost}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* ปุ่ม */}
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="button primary">
-              {editingId ? "Save Changes" : "Create"}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="button secondary"
-                onClick={handleCancel}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* ตารางรายการงานบำรุง */}
-      {loading && <div className="card">Loading jobs...</div>}
-
-      {!loading && !error && (
+        {/* ฟอร์มสร้าง / แก้ไขงาน */}
         <div className="card">
           <div className="card-header">
-            <div className="card-title">Jobs List</div>
+            <div className="card-title">
+              {editingId ? "Edit Job" : "New Job"}
+            </div>
           </div>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Elevator</th>
-                <th>Technician</th>
-                <th>Type</th>
-                <th>Contract</th>
-                <th>Total Cost</th>
-                <th>Created</th>
-                <th style={{ width: 130 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((j) => (
-                <tr key={j.id}>
-                  <td>{j.id}</td>
-                  <td>
-                    {j.elevator_id}{" "}
-                    {j.elevator_name ? `- ${j.elevator_name}` : ""}{" "}
-                    {j.building_name ? `(${j.building_name})` : ""}
-                  </td>
-                  <td>{j.technician_name || technicianName(j.technician_id)}</td>
-                  <td>{renderJobType(j.job_type)}</td>
-                  <td>{j.contract_code || contractCode(j.contract_id)}</td>
-                  <td>{j.total_cost}</td>
-                  <td>
-                    {j.created_at
-                      ? new Date(j.created_at).toLocaleDateString()
-                      : "-"}
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      className="button sm secondary"
-                      onClick={() => handleEdit(j)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="button sm danger"
-                      onClick={() => handleDelete(j.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {jobs.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="text-center">
-                    No jobs.
-                  </td>
-                </tr>
+
+          <form onSubmit={handleSubmit}>
+            {/* Elevator / Type */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Elevator *
+                  <select
+                    name="elevator_id"
+                    value={form.elevator_id}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="">-- select elevator --</option>
+                    {elevators.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.id} - {e.name}{" "}
+                        {e.building_name ? `(${e.building_name})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div>
+                <label>
+                  Job Type
+                  <select
+                    name="job_type"
+                    value={form.job_type}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="planned">Planned</option>
+                    <option value="emergency">Emergency</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {/* Technician / Contract */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Technician
+                  <select
+                    name="technician_id"
+                    value={form.technician_id}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="">-- not assigned --</option>
+                    {technicians.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div>
+                <label>
+                  Contract
+                  <select
+                    name="contract_id"
+                    value={form.contract_id}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="">-- none --</option>
+                    {contracts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.contract_code} - {c.customer_name || ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {/* Ticket ID */}
+            <label>
+              Ticket ID
+              <input
+                name="ticket_id"
+                value={form.ticket_id}
+                onChange={handleChange}
+                className="input"
+                placeholder="เชื่อมกับ ticket ถ้ามี"
+              />
+            </label>
+
+            {/* Remarks */}
+            <label>
+              Remarks
+              <textarea
+                name="remarks"
+                value={form.remarks}
+                onChange={handleChange}
+                className="input"
+                rows={2}
+                placeholder="รายละเอียดอาการ / งานที่ทำ"
+              />
+            </label>
+
+            {/* เวลาและค่าใช้จ่าย */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Labor Hours
+                  <input
+                    type="number"
+                    step="0.25"
+                    name="total_labor_hours"
+                    value={form.total_labor_hours}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Labor Cost
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="labor_cost"
+                    value={form.labor_cost}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div>
+                <label>
+                  Parts Cost
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="parts_cost"
+                    value={form.parts_cost}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* ปุ่ม */}
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button type="submit" className="button primary">
+                {editingId ? "Save Changes" : "Create"}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
               )}
-            </tbody>
-          </table>
+            </div>
+          </form>
         </div>
-      )}
-    </div>
+
+        {/* ตารางรายการงานบำรุง */}
+        {loading && <div className="card">Loading jobs...</div>}
+
+        {!loading && !error && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">Jobs List</div>
+            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Elevator</th>
+                  <th>Technician</th>
+                  <th>Type</th>
+                  <th>Contract</th>
+                  <th>Total Cost</th>
+                  <th>Created</th>
+                  <th style={{ width: 130 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.map((j) => (
+                  <tr key={j.id}>
+                    <td>{j.id}</td>
+                    <td>
+                      {j.elevator_id}{" "}
+                      {j.elevator_name ? `- ${j.elevator_name}` : ""}{" "}
+                      {j.building_name ? `(${j.building_name})` : ""}
+                    </td>
+                    <td>{j.technician_name || technicianName(j.technician_id)}</td>
+                    <td>{renderJobType(j.job_type)}</td>
+                    <td>{j.contract_code || contractCode(j.contract_id)}</td>
+                    <td>{j.total_cost}</td>
+                    <td>
+                      {j.created_at
+                        ? new Date(j.created_at).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="button sm secondary"
+                        onClick={() => handleEdit(j)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="button sm danger"
+                        onClick={() => handleDelete(j.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {jobs.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="text-center">
+                      No jobs.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </ProtectedPage>
   );
 }

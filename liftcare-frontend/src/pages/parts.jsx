@@ -1,6 +1,7 @@
 // src/pages/parts.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
 
 const emptyPartForm = {
   part_code: "",
@@ -24,6 +25,7 @@ const LOW_STOCK_THRESHOLD = 5;
 
 export default function PartsInventory() {
   const api = useApi();
+  const userRole = useRoleCheck();
 
   const [parts, setParts] = useState([]);
   const [stocks, setStocks] = useState([]);
@@ -192,308 +194,310 @@ export default function PartsInventory() {
   }
 
   return (
-    <div>
-      {/* หัวหน้าเพจ */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Spare Parts Inventory</h2>
-        <p className="app-page-subtitle">
-          จัดการข้อมูลอะไหล่ สต๊อกคงเหลือ และประวัติการเคลื่อนไหว
-        </p>
-      </div>
-
-      {loading && <div className="card">Loading...</div>}
-      {error && <div className="card error">{error}</div>}
-
-      {/* ส่วนจัดการอะไหล่ (ฟอร์ม) */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            {editingPartId ? "Edit Part" : "New Part"}
-          </div>
+    <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
+      <div>
+        {/* หัวหน้าเพจ */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Spare Parts Inventory</h2>
+          <p className="app-page-subtitle">
+            จัดการข้อมูลอะไหล่ สต๊อกคงเหลือ และประวัติการเคลื่อนไหว
+          </p>
         </div>
 
-        <form onSubmit={handlePartSubmit}>
-          <div className="form-row">
-            <div>
-              <label>
-                Part Code *
-                <input
-                  name="part_code"
-                  value={partForm.part_code}
-                  onChange={handlePartChange}
-                  className="input"
-                />
-              </label>
-            </div>
-            <div>
-              <label>
-                Name *
-                <input
-                  name="name"
-                  value={partForm.name}
-                  onChange={handlePartChange}
-                  className="input"
-                />
-              </label>
+        {loading && <div className="card">Loading...</div>}
+        {error && <div className="card error">{error}</div>}
+
+        {/* ส่วนจัดการอะไหล่ (ฟอร์ม) */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">
+              {editingPartId ? "Edit Part" : "New Part"}
             </div>
           </div>
 
-          <div className="form-row">
-            <div>
-              <label>
-                Brand
-                <input
-                  name="brand"
-                  value={partForm.brand}
-                  onChange={handlePartChange}
-                  className="input"
-                />
-              </label>
+          <form onSubmit={handlePartSubmit}>
+            <div className="form-row">
+              <div>
+                <label>
+                  Part Code *
+                  <input
+                    name="part_code"
+                    value={partForm.part_code}
+                    onChange={handlePartChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Name *
+                  <input
+                    name="name"
+                    value={partForm.name}
+                    onChange={handlePartChange}
+                    className="input"
+                  />
+                </label>
+              </div>
             </div>
-            <div>
-              <label>
-                Model
-                <input
-                  name="model"
-                  value={partForm.model}
-                  onChange={handlePartChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
 
-          <div className="form-row">
-            <div>
-              <label>
-                Unit
-                <input
-                  name="unit"
-                  value={partForm.unit}
-                  onChange={handlePartChange}
-                  className="input"
-                  placeholder="เช่น pcs, set, ea"
-                />
-              </label>
+            <div className="form-row">
+              <div>
+                <label>
+                  Brand
+                  <input
+                    name="brand"
+                    value={partForm.brand}
+                    onChange={handlePartChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Model
+                  <input
+                    name="model"
+                    value={partForm.model}
+                    onChange={handlePartChange}
+                    className="input"
+                  />
+                </label>
+              </div>
             </div>
-            <div>
-              <label>
-                Cost Price
-                <input
-                  type="number"
-                  name="cost_price"
-                  value={partForm.cost_price}
-                  onChange={handlePartChange}
-                  className="input"
-                />
-              </label>
-            </div>
-            <div>
-              <label>
-                Sell Price
-                <input
-                  type="number"
-                  name="sell_price"
-                  value={partForm.sell_price}
-                  onChange={handlePartChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
 
-          <label>
-            Min Stock
-            <input
-              type="number"
-              name="min_stock"
-              value={partForm.min_stock}
-              onChange={handlePartChange}
-              className="input"
-            />
-          </label>
+            <div className="form-row">
+              <div>
+                <label>
+                  Unit
+                  <input
+                    name="unit"
+                    value={partForm.unit}
+                    onChange={handlePartChange}
+                    className="input"
+                    placeholder="เช่น pcs, set, ea"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Cost Price
+                  <input
+                    type="number"
+                    name="cost_price"
+                    value={partForm.cost_price}
+                    onChange={handlePartChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Sell Price
+                  <input
+                    type="number"
+                    name="sell_price"
+                    value={partForm.sell_price}
+                    onChange={handlePartChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="button primary">
-              {editingPartId ? "Save Changes" : "Create"}
-            </button>
-            {editingPartId && (
-              <button
-                type="button"
-                className="button secondary"
-                onClick={handlePartCancel}
-              >
-                Cancel
+            <label>
+              Min Stock
+              <input
+                type="number"
+                name="min_stock"
+                value={partForm.min_stock}
+                onChange={handlePartChange}
+                className="input"
+              />
+            </label>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button type="submit" className="button primary">
+                {editingPartId ? "Save Changes" : "Create"}
               </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* ตารางรายการอะไหล่ */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Parts List</div>
+              {editingPartId && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={handlePartCancel}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
         </div>
 
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Part Code</th>
-              <th>Name</th>
-              <th>Brand</th>
-              <th>Model</th>
-              <th>Unit</th>
-              <th>Cost</th>
-              <th>Sell</th>
-              <th>Stock Qty</th>
-              <th>Min</th>
-              <th style={{ width: 130 }} />
-            </tr>
-          </thead>
-          <tbody>
-            {parts.map((p) => {
-              const qty = getStockForPart(p.id);
-              const low = isLowStock(p);
-              return (
-                <tr key={p.id}>
-                  <td>{p.part_code}</td>
-                  <td>{p.name}</td>
-                  <td>{p.brand}</td>
-                  <td>{p.model}</td>
-                  <td>{p.unit}</td>
-                  <td>{p.cost_price}</td>
-                  <td>{p.sell_price}</td>
-                  <td>
-                    {qty}
-                    {low && " (Low)"}
-                  </td>
-                  <td>{p.min_stock ?? "-"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      className="button sm secondary"
-                      onClick={() => handlePartEdit(p)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="button sm danger"
-                      onClick={() => handlePartDelete(p.id)}
-                    >
-                      Delete
-                    </button>
+        {/* ตารางรายการอะไหล่ */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Parts List</div>
+          </div>
+
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Part Code</th>
+                <th>Name</th>
+                <th>Brand</th>
+                <th>Model</th>
+                <th>Unit</th>
+                <th>Cost</th>
+                <th>Sell</th>
+                <th>Stock Qty</th>
+                <th>Min</th>
+                <th style={{ width: 130 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {parts.map((p) => {
+                const qty = getStockForPart(p.id);
+                const low = isLowStock(p);
+                return (
+                  <tr key={p.id}>
+                    <td>{p.part_code}</td>
+                    <td>{p.name}</td>
+                    <td>{p.brand}</td>
+                    <td>{p.model}</td>
+                    <td>{p.unit}</td>
+                    <td>{p.cost_price}</td>
+                    <td>{p.sell_price}</td>
+                    <td>
+                      {qty}
+                      {low && " (Low)"}
+                    </td>
+                    <td>{p.min_stock ?? "-"}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="button sm secondary"
+                        onClick={() => handlePartEdit(p)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="button sm danger"
+                        onClick={() => handlePartDelete(p.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {parts.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="text-center">
+                    No parts.
                   </td>
                 </tr>
-              );
-            })}
-            {parts.length === 0 && (
-              <tr>
-                <td colSpan={10} className="text-center">
-                  No parts.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ฟอร์มปรับสต๊อก */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Adjust Stock</div>
+              )}
+            </tbody>
+          </table>
         </div>
 
-        <form onSubmit={handleAdjustSubmit}>
-          <label>
-            Part *
-            <select
-              name="part_id"
-              value={adjustForm.part_id}
-              onChange={handleAdjustChange}
-              className="input"
-            >
-              <option value="">-- select part --</option>
-              {parts.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.part_code} - {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="form-row">
-            <div>
-              <label>
-                Change Qty (+/-) *
-                <input
-                  type="number"
-                  name="change_qty"
-                  value={adjustForm.change_qty}
-                  onChange={handleAdjustChange}
-                  className="input"
-                />
-              </label>
-            </div>
-            <div>
-              <label>
-                Note
-                <input
-                  name="note"
-                  value={adjustForm.note}
-                  onChange={handleAdjustChange}
-                  className="input"
-                />
-              </label>
-            </div>
+        {/* ฟอร์มปรับสต๊อก */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Adjust Stock</div>
           </div>
 
-          <button type="submit" className="button primary">
-            Apply Adjustment
-          </button>
-        </form>
-      </div>
+          <form onSubmit={handleAdjustSubmit}>
+            <label>
+              Part *
+              <select
+                name="part_id"
+                value={adjustForm.part_id}
+                onChange={handleAdjustChange}
+                className="input"
+              >
+                <option value="">-- select part --</option>
+                {parts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.part_code} - {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-      {/* ประวัติการเคลื่อนไหวสต๊อก */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Stock Movements</div>
+            <div className="form-row">
+              <div>
+                <label>
+                  Change Qty (+/-) *
+                  <input
+                    type="number"
+                    name="change_qty"
+                    value={adjustForm.change_qty}
+                    onChange={handleAdjustChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Note
+                  <input
+                    name="note"
+                    value={adjustForm.note}
+                    onChange={handleAdjustChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" className="button primary">
+              Apply Adjustment
+            </button>
+          </form>
         </div>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Part</th>
-              <th>Change</th>
-              <th>Note</th>
-              <th>Created At</th>
-            </tr>
-          </thead>
-          <tbody>
-            {movements.map((m) => (
-              <tr key={m.id}>
-                <td>
-                  {m.part_code} - {m.part_name}
-                </td>
-                <td>{m.change_qty}</td>
-                <td>{m.note}</td>
-                <td>
-                  {m.created_at
-                    ? new Date(m.created_at).toLocaleString()
-                    : "-"}
-                </td>
-              </tr>
-            ))}
-            {movements.length === 0 && (
+
+        {/* ประวัติการเคลื่อนไหวสต๊อก */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Stock Movements</div>
+          </div>
+          <table className="table">
+            <thead>
               <tr>
-                <td colSpan={4} className="text-center">
-                  No movements.
-                </td>
+                <th>Part</th>
+                <th>Change</th>
+                <th>Note</th>
+                <th>Created At</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {movements.map((m) => (
+                <tr key={m.id}>
+                  <td>
+                    {m.part_code} - {m.part_name}
+                  </td>
+                  <td>{m.change_qty}</td>
+                  <td>{m.note}</td>
+                  <td>
+                    {m.created_at
+                      ? new Date(m.created_at).toLocaleString()
+                      : "-"}
+                  </td>
+                </tr>
+              ))}
+              {movements.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="text-center">
+                    No movements.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </ProtectedPage>
   );
 }

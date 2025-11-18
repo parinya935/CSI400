@@ -1,6 +1,8 @@
 // src/pages/technicians.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
+import FormModal from "../components/FormModal";
 
 const emptyForm = {
   user_id: "",
@@ -11,13 +13,14 @@ const emptyForm = {
 
 export default function Technicians() {
   const api = useApi();
+  const userRole = useRoleCheck();
   const [technicians, setTechnicians] = useState([]);
-  const [users, setUsers] = useState([]); // ดึงจาก /api/users ไม่สน role
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   async function loadData() {
     try {
@@ -25,7 +28,7 @@ export default function Technicians() {
       setError("");
       const [ts, us] = await Promise.all([
         api.get("/api/technicians"),
-        api.get("/api/technician-users"), // เดิมเคยเป็น /api/technician-users
+        api.get("/api/technician-users"),
       ]);
       setTechnicians(ts || []);
       setUsers(us || []);
@@ -68,6 +71,7 @@ export default function Technicians() {
       }
       setForm(emptyForm);
       setEditingId(null);
+      setIsFormOpen(false);
       await loadData();
     } catch (err) {
       console.error(err);
@@ -83,12 +87,13 @@ export default function Technicians() {
       specialty: t.specialty || "",
       notes: t.notes || "",
     });
+    setIsFormOpen(true);
   }
 
   async function handleDelete(id) {
     if (!window.confirm("ต้องการลบช่างคนนี้ใช่หรือไม่?")) return;
     try {
-      await api.delete(`/api/technicians/${id}`); // เดิมเป็น api.del
+      await api.delete(`/api/technicians/${id}`);
       await loadData();
     } catch (err) {
       console.error(err);
@@ -96,7 +101,14 @@ export default function Technicians() {
     }
   }
 
-  function handleCancel() {
+  function handleOpenForm() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setIsFormOpen(true);
+  }
+
+  function handleCloseForm() {
+    setIsFormOpen(false);
     setEditingId(null);
     setForm(emptyForm);
   }
@@ -108,147 +120,158 @@ export default function Technicians() {
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Technicians</h2>
-        <p className="app-page-subtitle">
-          จัดการข้อมูลช่างเทคนิค และเชื่อมกับ User ของระบบ
-        </p>
-      </div>
-
-      {error && <div className="card error">{error}</div>}
-
-      {/* ฟอร์ม */}
-      <div className="card">
-        <div className="card-title">
-          {editingId ? "Edit Technician" : "New Technician"}
+    <ProtectedPage userRole={userRole} allowedRoles="admin">
+      <div>
+        {/* Header */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Technicians</h2>
+          <p className="app-page-subtitle">
+            จัดการข้อมูลช่างเทคนิค และเชื่อมกับ User ของระบบ
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <label>
-            User (Technician) *
-            <select
-              name="user_id"
-              value={form.user_id}
-              onChange={handleChange}
-              className="input"
-              disabled={!!editingId} // แก้ไขห้ามเปลี่ยน user_id (เหมือนของเดิม)
-            >
-              <option value="">-- select user --</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.email})
-                </option>
-              ))}
-            </select>
-          </label>
+        {error && <div className="card error">{error}</div>}
 
-          <div className="form-row">
-            <div>
-              <label>
-                Phone
-                <input
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
+        {/* ปุ่มเพิ่มช่างใหม่ */}
+        <div style={{ marginBottom: 16 }}>
+          <button
+            type="button"
+            className="button primary"
+            onClick={handleOpenForm}
+          >
+            + Add New Technician
+          </button>
+        </div>
+
+        {/* ฟอร์มในโมดัล */}
+        <FormModal
+          isOpen={isFormOpen}
+          title={editingId ? "Edit Technician" : "New Technician"}
+          onClose={handleCloseForm}
+        >
+          <form onSubmit={handleSubmit}>
+            <label>
+              User (Technician) *
+              <select
+                name="user_id"
+                value={form.user_id}
+                onChange={handleChange}
+                className="input"
+                disabled={!!editingId} // แก้ไขห้ามเปลี่ยน user_id (เหมือนของเดิม)
+              >
+                <option value="">-- select user --</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="form-row">
+              <div>
+                <label>
+                  Phone
+                  <input
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Specialty (ความเชี่ยวชาญ)
+                  <input
+                    name="specialty"
+                    value={form.specialty}
+                    onChange={handleChange}
+                    className="input"
+                    placeholder="เช่น Mitsubishi, Inverter, Rescue..."
+                  />
+                </label>
+              </div>
             </div>
-            <div>
-              <label>
-                Specialty (ความเชี่ยวชาญ)
-                <input
-                  name="specialty"
-                  value={form.specialty}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="เช่น Mitsubishi, Inverter, Rescue..."
-                />
-              </label>
-            </div>
-          </div>
 
-          <label>
-            Notes
-            <textarea
-              name="notes"
-              value={form.notes}
-              onChange={handleChange}
-              className="input"
-              rows={3}
-            />
-          </label>
+            <label>
+              Notes
+              <textarea
+                name="notes"
+                value={form.notes}
+                onChange={handleChange}
+                className="input"
+                rows={3}
+              />
+            </label>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="button primary">
-              {editingId ? "Save Changes" : "Create"}
-            </button>
-            {editingId && (
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button type="submit" className="button primary">
+                {editingId ? "Save Changes" : "Create"}
+              </button>
               <button
                 type="button"
                 className="button secondary"
-                onClick={handleCancel}
+                onClick={handleCloseForm}
               >
                 Cancel
               </button>
-            )}
-          </div>
-        </form>
-      </div>
+            </div>
+          </form>
+        </FormModal>
 
-      {/* ตาราง */}
-      <div className="card">
-        <div className="card-title">Technician List</div>
+        {/* ตาราง */}
+        <div className="card">
+          <div className="card-title">Technician List</div>
 
-        {loading ? (
-          <div>Loading...</div>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Phone</th>
-                <th>Specialty</th>
-                <th style={{ width: 140 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {technicians.map((t) => (
-                <tr key={t.id}>
-                  <td>{renderUserName(t.user_id)}</td>
-                  <td>{t.phone || "-"}</td>
-                  <td>{t.specialty || "-"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      className="button sm secondary"
-                      type="button"
-                      onClick={() => handleEdit(t)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      className="button sm danger"
-                      type="button"
-                      onClick={() => handleDelete(t.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {technicians.length === 0 && (
+          {loading ? (
+            <div>Loading...</div>
+          ) : (
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={4} className="text-center">
-                    No technicians.
-                  </td>
+                  <th>User</th>
+                  <th>Phone</th>
+                  <th>Specialty</th>
+                  <th style={{ width: 140 }} />
                 </tr>
-              )}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {technicians.map((t) => (
+                  <tr key={t.id}>
+                    <td>{renderUserName(t.user_id)}</td>
+                    <td>{t.phone || "-"}</td>
+                    <td>{t.specialty || "-"}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        className="button sm secondary"
+                        type="button"
+                        onClick={() => handleEdit(t)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        className="button sm danger"
+                        type="button"
+                        onClick={() => handleDelete(t.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {technicians.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="text-center">
+                      No technicians.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-    </div>
+    </ProtectedPage>
   );
 }

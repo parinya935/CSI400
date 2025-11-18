@@ -1,6 +1,8 @@
 // src/pages/buildings.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
+import FormModal from "../components/FormModal";
 
 const emptyForm = {
   customer_id: "",
@@ -11,15 +13,15 @@ const emptyForm = {
 
 export default function Buildings() {
   const api = useApi();
+  const userRole = useRoleCheck();
 
   const [buildings, setBuildings] = useState([]);
   const [customers, setCustomers] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // โหลดข้อมูล buildings + customers
@@ -77,6 +79,7 @@ export default function Buildings() {
 
       setForm(emptyForm);
       setEditingId(null);
+      setIsFormOpen(false);
       await loadData();
     } catch (err) {
       console.error(err);
@@ -94,11 +97,7 @@ export default function Buildings() {
       address: b.address || "",
       building_type: b.building_type || "",
     });
-  }
-
-  function handleCancel() {
-    setEditingId(null);
-    setForm(emptyForm);
+    setIsFormOpen(true);
   }
 
   async function handleDelete(b) {
@@ -112,171 +111,187 @@ export default function Buildings() {
     }
   }
 
+  function handleOpenForm() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setIsFormOpen(true);
+  }
+
+  function handleCloseForm() {
+    setIsFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  }
+
   function customerName(id) {
     const c = customers.find((x) => x.id === id);
     return c ? c.name : "-";
   }
 
   return (
-    <div>
-      {/* หัวหน้าเพจ */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Buildings</h2>
-        <p className="app-page-subtitle">
-          จัดการข้อมูลอาคารสำหรับลูกค้าแต่ละราย
-        </p>
-      </div>
-
-      {error && <div className="alert-error">{error}</div>}
-
-      {/* ฟอร์มสร้าง / แก้ไข */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            {editingId ? "Edit building" : "Add new building"}
-          </div>
+    <ProtectedPage userRole={userRole} allowedRoles="admin">
+      <div>
+        {/* หัวหน้าเพจ */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Buildings</h2>
+          <p className="app-page-subtitle">
+            จัดการข้อมูลอาคารสำหรับลูกค้าแต่ละราย
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-row">
-            <div>
-              <label>
-                Customer
-                <select
-                  name="customer_id"
-                  className="input"
-                  value={form.customer_id}
-                  onChange={handleChange}
-                >
-                  <option value="">-- select customer --</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+        {error && <div className="alert-error">{error}</div>}
+
+        {/* ปุ่มสร้างใหม่ */}
+        <div style={{ marginBottom: 16 }}>
+          <button
+            type="button"
+            className="button primary"
+            onClick={handleOpenForm}
+          >
+            + Add New Building
+          </button>
+        </div>
+
+        {/* Modal Form */}
+        <FormModal
+          isOpen={isFormOpen}
+          title={editingId ? "Edit Building" : "New Building"}
+          onClose={handleCloseForm}
+        >
+          <form onSubmit={handleSubmit}>
+            <div className="form-row">
+              <div>
+                <label>
+                  Customer *
+                  <select
+                    name="customer_id"
+                    className="input"
+                    value={form.customer_id}
+                    onChange={handleChange}
+                  >
+                    <option value="">-- select customer --</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div>
+                <label>
+                  Building Name *
+                  <input
+                    name="name"
+                    className="input"
+                    value={form.name}
+                    onChange={handleChange}
+                    placeholder="เช่น Tower A"
+                  />
+                </label>
+              </div>
             </div>
 
-            <div>
-              <label>
-                Building name
-                <input
-                  name="name"
-                  className="input"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="เช่น Tower A"
-                />
-              </label>
-            </div>
-          </div>
+            <label>
+              Address
+              <textarea
+                name="address"
+                className="input"
+                rows={2}
+                value={form.address}
+                onChange={handleChange}
+              />
+            </label>
 
-          <label>
-            Address
-            <textarea
-              name="address"
-              className="input"
-              rows={2}
-              value={form.address}
-              onChange={handleChange}
-            />
-          </label>
+            <label>
+              Building Type
+              <input
+                name="building_type"
+                className="input"
+                value={form.building_type}
+                onChange={handleChange}
+                placeholder="เช่น Office / Condo / Hospital"
+              />
+            </label>
 
-          <label>
-            Building type
-            <input
-              name="building_type"
-              className="input"
-              value={form.building_type}
-              onChange={handleChange}
-              placeholder="เช่น Office / Condo / Hospital"
-            />
-          </label>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button
-              type="submit"
-              className="button primary"
-              disabled={saving}
-            >
-              {saving
-                ? "Saving..."
-                : editingId
-                ? "Save changes"
-                : "Add building"}
-            </button>
-
-            {editingId && (
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button
+                type="submit"
+                className="button primary"
+                disabled={saving}
+              >
+                {saving ? "Saving..." : editingId ? "Save" : "Create"}
+              </button>
               <button
                 type="button"
                 className="button secondary"
-                onClick={handleCancel}
+                onClick={handleCloseForm}
               >
                 Cancel
               </button>
-            )}
+            </div>
+          </form>
+        </FormModal>
+
+        {/* ตารางรายการอาคาร */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">All Buildings</div>
           </div>
-        </form>
-      </div>
 
-      {/* ตารางรายการอาคาร */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">All buildings</div>
-        </div>
-
-        {loading ? (
-          <div>Loading...</div>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Customer</th>
-                <th>Name</th>
-                <th>Address</th>
-                <th>Type</th>
-                <th style={{ width: 130 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buildings.map((b) => (
-                <tr key={b.id}>
-                  <td>{b.id}</td>
-                  <td>{customerName(b.customer_id)}</td>
-                  <td>{b.name}</td>
-                  <td>{b.address}</td>
-                  <td>{b.building_type}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="button sm secondary"
-                      onClick={() => handleEdit(b)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="button sm danger"
-                      onClick={() => handleDelete(b)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {buildings.length === 0 && (
+          {loading ? (
+            <div>Loading...</div>
+          ) : (
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="text-center">
-                    No buildings.
-                  </td>
+                  <th>ID</th>
+                  <th>Customer</th>
+                  <th>Name</th>
+                  <th>Address</th>
+                  <th>Type</th>
+                  <th style={{ width: 130 }}>Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {buildings.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.id}</td>
+                    <td>{customerName(b.customer_id)}</td>
+                    <td>{b.name}</td>
+                    <td>{b.address}</td>
+                    <td>{b.building_type}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="button sm secondary"
+                        onClick={() => handleEdit(b)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="button sm danger"
+                        onClick={() => handleDelete(b)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {buildings.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center">
+                      No buildings.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-    </div>
+    </ProtectedPage>
   );
 }

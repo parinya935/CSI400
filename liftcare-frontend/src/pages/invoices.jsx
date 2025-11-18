@@ -1,6 +1,7 @@
 // src/pages/invoices.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
 
 const emptyForm = {
   invoice_code: "",
@@ -14,6 +15,7 @@ const emptyForm = {
 
 export default function Invoices() {
   const api = useApi();
+  const userRole = useRoleCheck();
   const [invoices, setInvoices] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [quotations, setQuotations] = useState([]);
@@ -145,209 +147,211 @@ export default function Invoices() {
   }
 
   return (
-    <div>
-      {/* หัวหน้าเพจ */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Invoices</h2>
-        <p className="app-page-subtitle">
-          จัดการใบแจ้งหนี้จากใบเสนอราคา และสถานะการชำระเงินของลูกค้า
-        </p>
-      </div>
-
-      {/* ฟอร์ม */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            {editingId ? "Edit Invoice" : "New Invoice"}
-          </div>
+    <ProtectedPage userRole={userRole} allowedRoles="admin">
+      <div>
+        {/* หัวหน้าเพจ */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Invoices</h2>
+          <p className="app-page-subtitle">
+            จัดการใบแจ้งหนี้จากใบเสนอราคา และสถานะการชำระเงินของลูกค้า
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <label>
-            Customer *
-            <select
-              name="customer_id"
-              value={form.customer_id}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="">-- select customer --</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Quotation
-            <select
-              name="quotation_id"
-              value={form.quotation_id}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="">-- none --</option>
-              {quotations.map((q) => (
-                <option key={q.id} value={q.id}>
-                  {q.quotation_code} ({renderCustomerName(q.customer_id)})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Invoice code + Due date */}
-          <div className="form-row">
-            <div>
-              <label>
-                Invoice Code
-                <input
-                  name="invoice_code"
-                  value={form.invoice_code}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="ไม่กรอกให้ระบบ gen ให้อัตโนมัติ"
-                />
-              </label>
-            </div>
-            <div>
-              <label>
-                Due Date
-                <input
-                  type="date"
-                  name="due_date"
-                  value={form.due_date}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* Amounts */}
-          <div className="form-row">
-            <div>
-              <label>
-                Total Amount
-                <input
-                  type="number"
-                  name="total_amount"
-                  value={form.total_amount}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-            <div>
-              <label>
-                Paid Amount
-                <input
-                  type="number"
-                  name="paid_amount"
-                  value={form.paid_amount}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* Status */}
-          <label>
-            Status
-            <select
-              name="status"
-              value={form.status}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="unpaid">Unpaid</option>
-              <option value="partial">Partial</option>
-              <option value="paid">Paid</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </label>
-
-          {/* ปุ่ม */}
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="button primary">
-              {editingId ? "Save Changes" : "Create"}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="button secondary"
-                onClick={handleCancel}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* ตาราง */}
-      {loading && <div className="card">Loading...</div>}
-      {error && <div className="card error">{error}</div>}
-
-      {!loading && !error && (
+        {/* ฟอร์ม */}
         <div className="card">
           <div className="card-header">
-            <div className="card-title">Invoice List</div>
+            <div className="card-title">
+              {editingId ? "Edit Invoice" : "New Invoice"}
+            </div>
           </div>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Customer</th>
-                <th>Quotation</th>
-                <th>Status</th>
-                <th>Total</th>
-                <th>Paid</th>
-                <th style={{ width: 130 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((i) => (
-                <tr key={i.id}>
-                  <td>{i.invoice_code}</td>
-                  <td>
-                    {i.customer_name || renderCustomerName(i.customer_id)}
-                  </td>
-                  <td>{renderQuotationCode(i.quotation_id)}</td>
-                  <td>{renderStatusLabel(i.status)}</td>
-                  <td>{i.total_amount}</td>
-                  <td>{i.paid_amount}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      className="button sm secondary"
-                      onClick={() => handleEdit(i)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="button sm danger"
-                      onClick={() => handleDelete(i.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {invoices.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="text-center">
-                    No invoices.
-                  </td>
-                </tr>
+
+          <form onSubmit={handleSubmit}>
+            <label>
+              Customer *
+              <select
+                name="customer_id"
+                value={form.customer_id}
+                onChange={handleChange}
+                className="input"
+              >
+                <option value="">-- select customer --</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Quotation
+              <select
+                name="quotation_id"
+                value={form.quotation_id}
+                onChange={handleChange}
+                className="input"
+              >
+                <option value="">-- none --</option>
+                {quotations.map((q) => (
+                  <option key={q.id} value={q.id}>
+                    {q.quotation_code} ({renderCustomerName(q.customer_id)})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {/* Invoice code + Due date */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Invoice Code
+                  <input
+                    name="invoice_code"
+                    value={form.invoice_code}
+                    onChange={handleChange}
+                    className="input"
+                    placeholder="ไม่กรอกให้ระบบ gen ให้อัตโนมัติ"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Due Date
+                  <input
+                    type="date"
+                    name="due_date"
+                    value={form.due_date}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Amounts */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Total Amount
+                  <input
+                    type="number"
+                    name="total_amount"
+                    value={form.total_amount}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Paid Amount
+                  <input
+                    type="number"
+                    name="paid_amount"
+                    value={form.paid_amount}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Status */}
+            <label>
+              Status
+              <select
+                name="status"
+                value={form.status}
+                onChange={handleChange}
+                className="input"
+              >
+                <option value="unpaid">Unpaid</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </label>
+
+            {/* ปุ่ม */}
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button type="submit" className="button primary">
+                {editingId ? "Save Changes" : "Create"}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
               )}
-            </tbody>
-          </table>
+            </div>
+          </form>
         </div>
-      )}
-    </div>
+
+        {/* ตาราง */}
+        {loading && <div className="card">Loading...</div>}
+        {error && <div className="card error">{error}</div>}
+
+        {!loading && !error && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">Invoice List</div>
+            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Customer</th>
+                  <th>Quotation</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Paid</th>
+                  <th style={{ width: 130 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((i) => (
+                  <tr key={i.id}>
+                    <td>{i.invoice_code}</td>
+                    <td>
+                      {i.customer_name || renderCustomerName(i.customer_id)}
+                    </td>
+                    <td>{renderQuotationCode(i.quotation_id)}</td>
+                    <td>{renderStatusLabel(i.status)}</td>
+                    <td>{i.total_amount}</td>
+                    <td>{i.paid_amount}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="button sm secondary"
+                        onClick={() => handleEdit(i)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="button sm danger"
+                        onClick={() => handleDelete(i.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {invoices.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center">
+                      No invoices.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </ProtectedPage>
   );
 }

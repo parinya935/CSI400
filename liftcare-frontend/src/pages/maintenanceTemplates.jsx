@@ -1,6 +1,7 @@
 // src/pages/maintenanceTemplates.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
 
 const emptyForm = {
   name: "",
@@ -9,6 +10,7 @@ const emptyForm = {
 
 export default function MaintenanceTemplates() {
   const api = useApi();
+  const userRole = useRoleCheck();
 
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,112 +90,114 @@ export default function MaintenanceTemplates() {
   }
 
   return (
-    <div>
-      {/* หัวหน้าเพจ */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Maintenance Templates</h2>
-        <p className="app-page-subtitle">
-          ตั้งชุดรายการตรวจเช็ค / งานบำรุงมาตรฐาน เพื่อใช้กับ Maintenance Plans
-        </p>
-      </div>
-
-      {/* ฟอร์มสร้าง/แก้ไข */}
-      <div className="card">
-        <div className="card-title">
-          {editingId ? "Edit Template" : "New Template"}
+    <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
+      <div>
+        {/* หัวหน้าเพจ */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Maintenance Templates</h2>
+          <p className="app-page-subtitle">
+            ตั้งชุดรายการตรวจเช็ค / งานบำรุงมาตรฐาน เพื่อใช้กับ Maintenance Plans
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <label>
-            Template Name *
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="input"
-            />
-          </label>
-
-          <label>
-            Description
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              className="input"
-              rows={3}
-            />
-          </label>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="button primary">
-              {editingId ? "Update" : "Create"}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="button secondary"
-                onClick={handleCancel}
-              >
-                Cancel
-              </button>
-            )}
+        {/* ฟอร์มสร้าง/แก้ไข */}
+        <div className="card">
+          <div className="card-title">
+            {editingId ? "Edit Template" : "New Template"}
           </div>
-        </form>
-      </div>
 
-      {/* ตารางรายการ Templates */}
-      <div className="card">
-        <div className="card-title">Template List</div>
+          <form onSubmit={handleSubmit}>
+            <label>
+              Template Name *
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                className="input"
+              />
+            </label>
 
-        {loading && <div>Loading templates...</div>}
-        {error && <div className="card error">{error}</div>}
+            <label>
+              Description
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                className="input"
+                rows={3}
+              />
+            </label>
 
-        {!loading && !error && (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Template Name</th>
-                <th>Description</th>
-                <th style={{ width: 140 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {templates.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.id}</td>
-                  <td>{t.name}</td>
-                  <td>{t.description || "-"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      className="button sm secondary"
-                      onClick={() => handleEdit(t)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="button sm danger"
-                      onClick={() => handleDelete(t.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {templates.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="text-center">
-                    No templates.
-                  </td>
-                </tr>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button type="submit" className="button primary">
+                {editingId ? "Update" : "Create"}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
               )}
-            </tbody>
-          </table>
-        )}
+            </div>
+          </form>
+        </div>
+
+        {/* ตารางรายการ Templates */}
+        <div className="card">
+          <div className="card-title">Template List</div>
+
+          {loading && <div>Loading templates...</div>}
+          {error && <div className="card error">{error}</div>}
+
+          {!loading && !error && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Template Name</th>
+                  <th>Description</th>
+                  <th style={{ width: 140 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {templates.map((t) => (
+                  <tr key={t.id}>
+                    <td>{t.id}</td>
+                    <td>{t.name}</td>
+                    <td>{t.description || "-"}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="button sm secondary"
+                        onClick={() => handleEdit(t)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="button sm danger"
+                        onClick={() => handleDelete(t.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {templates.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="text-center">
+                      No templates.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-    </div>
+    </ProtectedPage>
   );
 }

@@ -1,6 +1,8 @@
 // src/pages/contracts.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
+import FormModal from "../components/FormModal";
 
 const emptyForm = {
   customer_id: "",
@@ -16,12 +18,14 @@ const emptyForm = {
 
 export default function Contracts() {
   const api = useApi();
+  const userRole = useRoleCheck();
   const [contracts, setContracts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   async function loadData() {
     try {
@@ -86,6 +90,7 @@ export default function Contracts() {
       }
       setForm(emptyForm);
       setEditingId(null);
+      setIsFormOpen(false);
       await loadData();
     } catch (err) {
       console.error(err);
@@ -111,6 +116,7 @@ export default function Contracts() {
       notify_before_days:
         c.notify_before_days != null ? String(c.notify_before_days) : "30",
     });
+    setIsFormOpen(true);
   }
 
   async function handleDelete(id) {
@@ -124,7 +130,14 @@ export default function Contracts() {
     }
   }
 
-  function handleCancel() {
+  function handleOpenForm() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setIsFormOpen(true);
+  }
+
+  function handleCloseForm() {
+    setIsFormOpen(false);
     setEditingId(null);
     setForm(emptyForm);
   }
@@ -141,235 +154,242 @@ export default function Contracts() {
   }
 
   return (
-    <div>
-      {/* หัวหน้าเพจ */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Contracts</h2>
-        <p className="app-page-subtitle">
-          จัดการสัญญาบำรุงรักษา (รายปี / จ่ายต่อครั้ง) ของลูกค้า
-        </p>
-      </div>
-
-      {/* ฟอร์มสร้าง/แก้ไขสัญญา */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            {editingId ? "Edit Contract" : "New Contract"}
-          </div>
+    <ProtectedPage userRole={userRole} allowedRoles="admin">
+      <div>
+        {/* หัวหน้าเพจ */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Contracts</h2>
+          <p className="app-page-subtitle">
+            จัดการสัญญาบำรุงรักษา (รายปี / จ่ายต่อครั้ง) ของลูกค้า
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* แถว Customer */}
-          <label>
-            Customer *
-            <select
-              name="customer_id"
-              value={form.customer_id}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="">-- select customer --</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div style={{ marginBottom: 16 }}>
+          <button
+            type="button"
+            className="button primary"
+            onClick={handleOpenForm}
+          >
+            + Add New Contract
+          </button>
+        </div>
 
-          {/* แถว Code + Type */}
-          <div className="form-row">
-            <div>
-              <label>
-                Contract Code *
-                <input
-                  name="contract_code"
-                  value={form.contract_code}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="เช่น CT-2025-001"
-                />
-              </label>
-            </div>
-            <div>
-              <label>
-                Contract Type *
-                <select
-                  name="contract_type"
-                  value={form.contract_type}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="annual">Annual (รายปี)</option>
-                  <option value="per_call">Per Call (จ่ายต่อครั้ง)</option>
-                </select>
-              </label>
-            </div>
-          </div>
+        <FormModal
+          isOpen={isFormOpen}
+          title={editingId ? "Edit Contract" : "New Contract"}
+          onClose={handleCloseForm}
+        >
+          <form onSubmit={handleSubmit}>
+            {/* แถว Customer */}
+            <label>
+              Customer *
+              <select
+                name="customer_id"
+                value={form.customer_id}
+                onChange={handleChange}
+                className="input"
+              >
+                <option value="">-- select customer --</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          {/* แถว Start / End date */}
-          <div className="form-row">
-            <div>
-              <label>
-                Start Date *
-                <input
-                  type="date"
-                  name="start_date"
-                  value={form.start_date}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
+            {/* แถว Code + Type */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Contract Code *
+                  <input
+                    name="contract_code"
+                    value={form.contract_code}
+                    onChange={handleChange}
+                    className="input"
+                    placeholder="เช่น CT-2025-001"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Contract Type *
+                  <select
+                    name="contract_type"
+                    value={form.contract_type}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="annual">Annual (รายปี)</option>
+                    <option value="per_call">Per Call (จ่ายต่อครั้ง)</option>
+                  </select>
+                </label>
+              </div>
             </div>
-            <div>
-              <label>
-                End Date *
-                <input
-                  type="date"
-                  name="end_date"
-                  value={form.end_date}
-                  onChange={handleChange}
-                  className="input"
-                  min={form.start_date || undefined}
-                />
-              </label>
+
+            {/* แถว Start / End date */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Start Date *
+                  <input
+                    type="date"
+                    name="start_date"
+                    value={form.start_date}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  End Date *
+                  <input
+                    type="date"
+                    name="end_date"
+                    value={form.end_date}
+                    onChange={handleChange}
+                    className="input"
+                    min={form.start_date || undefined}
+                  />
+                </label>
+              </div>
             </div>
-          </div>
 
-          {/* แถว Maint/year + Notify before */}
-          <div className="form-row">
-            <div>
-              <label>
-                Maintenance / Year
-                <input
-                  type="number"
-                  name="maintenance_times_per_year"
-                  value={form.maintenance_times_per_year}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="เช่น 4 (ตรวจ 4 ครั้ง/ปี)"
-                />
-              </label>
+            {/* แถว Maint/year + Notify before */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Maintenance / Year
+                  <input
+                    type="number"
+                    name="maintenance_times_per_year"
+                    value={form.maintenance_times_per_year}
+                    onChange={handleChange}
+                    className="input"
+                    placeholder="เช่น 4 (ตรวจ 4 ครั้ง/ปี)"
+                  />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Notify Before (days)
+                  <input
+                    type="number"
+                    name="notify_before_days"
+                    value={form.notify_before_days}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
             </div>
-            <div>
-              <label>
-                Notify Before (days)
-                <input
-                  type="number"
-                  name="notify_before_days"
-                  value={form.notify_before_days}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
 
-          {/* Included / Excluded */}
-          <label>
-            Included Items
-            <textarea
-              name="included_items"
-              value={form.included_items}
-              onChange={handleChange}
-              className="input"
-              rows={2}
-              placeholder="รายการที่รวมในสัญญา เช่น ค่าแรง, ค่าเดินทาง, ตรวจเช็คตามแผน ฯลฯ"
-            />
-          </label>
+            {/* Included / Excluded */}
+            <label>
+              Included Items
+              <textarea
+                name="included_items"
+                value={form.included_items}
+                onChange={handleChange}
+                className="input"
+                rows={2}
+                placeholder="รายการที่รวมในสัญญา เช่น ค่าแรง, ค่าเดินทาง, ตรวจเช็คตามแผน ฯลฯ"
+              />
+            </label>
 
-          <label>
-            Excluded Items
-            <textarea
-              name="excluded_items"
-              value={form.excluded_items}
-              onChange={handleChange}
-              className="input"
-              rows={2}
-              placeholder="รายการที่ไม่รวม เช่น ค่าอะไหล่ใหญ่, ค่า Overhaul ฯลฯ"
-            />
-          </label>
+            <label>
+              Excluded Items
+              <textarea
+                name="excluded_items"
+                value={form.excluded_items}
+                onChange={handleChange}
+                className="input"
+                rows={2}
+                placeholder="รายการที่ไม่รวม เช่น ค่าอะไหล่ใหญ่, ค่า Overhaul ฯลฯ"
+              />
+            </label>
 
-          {/* ปุ่ม */}
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="button primary">
-              {editingId ? "Save Changes" : "Create"}
-            </button>
-            {editingId && (
+            {/* ปุ่ม */}
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button type="submit" className="button primary">
+                {editingId ? "Save Changes" : "Create"}
+              </button>
               <button
                 type="button"
                 className="button secondary"
-                onClick={handleCancel}
+                onClick={handleCloseForm}
               >
                 Cancel
               </button>
-            )}
-          </div>
-        </form>
-      </div>
+            </div>
+          </form>
+        </FormModal>
 
-      {/* ตารางสัญญา */}
-      {loading && <div className="card">Loading...</div>}
-      {error && <div className="card error">{error}</div>}
+        {/* ตารางสัญญา */}
+        {loading && <div className="card">Loading...</div>}
+        {error && <div className="card error">{error}</div>}
 
-      {!loading && !error && (
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">Contract List</div>
-          </div>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Customer</th>
-                <th>Type</th>
-                <th>Period</th>
-                <th>Maint./Year</th>
-                <th style={{ width: 130 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {contracts.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.contract_code}</td>
-                  <td>
-                    {c.customer_name || renderCustomerName(c.customer_id)}
-                  </td>
-                  <td>{renderTypeLabel(c.contract_type)}</td>
-                  <td>
-                    {c.start_date?.slice(0, 10)} -{" "}
-                    {c.end_date?.slice(0, 10)}
-                  </td>
-                  <td>{c.maintenance_times_per_year}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      className="button sm secondary"
-                      onClick={() => handleEdit(c)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="button sm danger"
-                      onClick={() => handleDelete(c.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {contracts.length === 0 && (
+        {!loading && !error && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">Contract List</div>
+            </div>
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="text-center">
-                    No contracts.
-                  </td>
+                  <th>Code</th>
+                  <th>Customer</th>
+                  <th>Type</th>
+                  <th>Period</th>
+                  <th>Maint./Year</th>
+                  <th style={{ width: 130 }} />
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody>
+                {contracts.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.contract_code}</td>
+                    <td>
+                      {c.customer_name || renderCustomerName(c.customer_id)}
+                    </td>
+                    <td>{renderTypeLabel(c.contract_type)}</td>
+                    <td>
+                      {c.start_date?.slice(0, 10)} -{" "}
+                      {c.end_date?.slice(0, 10)}
+                    </td>
+                    <td>{c.maintenance_times_per_year}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="button sm secondary"
+                        onClick={() => handleEdit(c)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="button sm danger"
+                        onClick={() => handleDelete(c.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {contracts.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center">
+                      No contracts.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </ProtectedPage>
   );
 }

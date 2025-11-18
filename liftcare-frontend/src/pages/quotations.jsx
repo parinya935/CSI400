@@ -1,6 +1,7 @@
 // src/pages/quotations.jsx
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
+import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
 
 const emptyForm = {
   quotation_code: "",
@@ -13,6 +14,7 @@ const emptyForm = {
 
 export default function Quotations() {
   const api = useApi();
+  const userRole = useRoleCheck();
   const [quotations, setQuotations] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [contracts, setContracts] = useState([]);
@@ -134,190 +136,192 @@ export default function Quotations() {
   }
 
   return (
-    <div>
-      {/* หัวหน้าเพจ */}
-      <div className="app-page-header">
-        <h2 className="app-page-title">Quotations</h2>
-        <p className="app-page-subtitle">
-          จัดการใบเสนอราคาให้ลูกค้า พร้อมสถานะการส่ง / อนุมัติ
-        </p>
-      </div>
-
-      {/* ฟอร์ม */}
-      <div className="card">
-        <div className="card-title">
-          {editingId ? "Edit Quotation" : "New Quotation"}
+    <ProtectedPage userRole={userRole} allowedRoles="admin">
+      <div>
+        {/* หัวหน้าเพจ */}
+        <div className="app-page-header">
+          <h2 className="app-page-title">Quotations</h2>
+          <p className="app-page-subtitle">
+            จัดการใบเสนอราคาให้ลูกค้า พร้อมสถานะการส่ง / อนุมัติ
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <label>
-            Customer *
-            <select
-              name="customer_id"
-              value={form.customer_id}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="">-- select customer --</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Contract + Quotation Code */}
-          <div className="form-row">
-            <div>
-              <label>
-                Contract
-                <select
-                  name="contract_id"
-                  value={form.contract_id}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="">-- none --</option>
-                  {contracts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.contract_code} ({renderCustomerName(c.customer_id)})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div>
-              <label>
-                Quotation Code
-                <input
-                  name="quotation_code"
-                  value={form.quotation_code}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="ไม่กรอกให้ระบบ gen ให้อัตโนมัติ"
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* Ticket ID */}
-          <label>
-            Ticket ID (อ้างอิงใบแจ้งซ่อม ถ้ามี)
-            <input
-              name="ticket_id"
-              value={form.ticket_id}
-              onChange={handleChange}
-              className="input"
-            />
-          </label>
-
-          {/* Status + Total */}
-          <div className="form-row">
-            <div>
-              <label>
-                Status
-                <select
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                  className="input"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="sent">Sent</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </label>
-            </div>
-            <div>
-              <label>
-                Total Amount
-                <input
-                  type="number"
-                  name="total_amount"
-                  value={form.total_amount}
-                  onChange={handleChange}
-                  className="input"
-                />
-              </label>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="button primary">
-              {editingId ? "Save Changes" : "Create"}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="button secondary"
-                onClick={handleCancel}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* ตาราง */}
-      {loading && <div className="card">Loading...</div>}
-      {error && <div className="card error">{error}</div>}
-
-      {!loading && !error && (
+        {/* ฟอร์ม */}
         <div className="card">
-          <div className="card-title">Quotation List</div>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Customer</th>
-                <th>Contract</th>
-                <th>Status</th>
-                <th>Total</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {quotations.map((q) => (
-                <tr key={q.id}>
-                  <td>{q.quotation_code}</td>
-                  <td>
-                    {q.customer_name || renderCustomerName(q.customer_id)}
-                  </td>
-                  <td>{renderContractCode(q.contract_id)}</td>
-                  <td>{q.status}</td>
-                  <td>{q.total_amount}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      className="button-sm-secondary"
-                      type="button"
-                      onClick={() => handleEdit(q)}
-                    >
-                      Edit
-                    </button>{" "}
-                    <button
-                      className="button sm danger"
-                      type="button"
-                      onClick={() => handleDelete(q.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {quotations.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="text-center">
-                    No quotations.
-                  </td>
-                </tr>
+          <div className="card-title">
+            {editingId ? "Edit Quotation" : "New Quotation"}
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <label>
+              Customer *
+              <select
+                name="customer_id"
+                value={form.customer_id}
+                onChange={handleChange}
+                className="input"
+              >
+                <option value="">-- select customer --</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {/* Contract + Quotation Code */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Contract
+                  <select
+                    name="contract_id"
+                    value={form.contract_id}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="">-- none --</option>
+                    {contracts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.contract_code} ({renderCustomerName(c.customer_id)})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div>
+                <label>
+                  Quotation Code
+                  <input
+                    name="quotation_code"
+                    value={form.quotation_code}
+                    onChange={handleChange}
+                    className="input"
+                    placeholder="ไม่กรอกให้ระบบ gen ให้อัตโนมัติ"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Ticket ID */}
+            <label>
+              Ticket ID (อ้างอิงใบแจ้งซ่อม ถ้ามี)
+              <input
+                name="ticket_id"
+                value={form.ticket_id}
+                onChange={handleChange}
+                className="input"
+              />
+            </label>
+
+            {/* Status + Total */}
+            <div className="form-row">
+              <div>
+                <label>
+                  Status
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="input"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </label>
+              </div>
+              <div>
+                <label>
+                  Total Amount
+                  <input
+                    type="number"
+                    name="total_amount"
+                    value={form.total_amount}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button type="submit" className="button primary">
+                {editingId ? "Save Changes" : "Create"}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
               )}
-            </tbody>
-          </table>
+            </div>
+          </form>
         </div>
-      )}
-    </div>
+
+        {/* ตาราง */}
+        {loading && <div className="card">Loading...</div>}
+        {error && <div className="card error">{error}</div>}
+
+        {!loading && !error && (
+          <div className="card">
+            <div className="card-title">Quotation List</div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Customer</th>
+                  <th>Contract</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {quotations.map((q) => (
+                  <tr key={q.id}>
+                    <td>{q.quotation_code}</td>
+                    <td>
+                      {q.customer_name || renderCustomerName(q.customer_id)}
+                    </td>
+                    <td>{renderContractCode(q.contract_id)}</td>
+                    <td>{q.status}</td>
+                    <td>{q.total_amount}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        className="button-sm-secondary"
+                        type="button"
+                        onClick={() => handleEdit(q)}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        className="button sm danger"
+                        type="button"
+                        onClick={() => handleDelete(q.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {quotations.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center">
+                      No quotations.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </ProtectedPage>
   );
 }

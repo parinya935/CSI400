@@ -11,6 +11,60 @@ export default function Layout() {
     location.pathname === path ||
     (path !== "/" && location.pathname.startsWith(path));
 
+  // -------- Menu Items by Role --------
+  const getMenuItems = () => {
+    const baseItems = [
+      { path: "/", label: "Dashboard", roles: ["admin", "customer", "technician"] },
+    ];
+
+    const adminItems = [
+      { path: "/customers", label: "Customers", roles: ["admin"] },
+      { path: "/buildings", label: "Buildings", roles: ["admin"] },
+      { path: "/elevators", label: "Elevators", roles: ["admin"] },
+      { path: "/technicians", label: "Technicians", roles: ["admin"] },
+      { path: "/contracts", label: "Contracts", roles: ["admin"] },
+      { path: "/quotations", label: "Quotations", roles: ["admin"] },
+      { path: "/invoices", label: "Invoices", roles: ["admin"] },
+      { path: "/pricing", label: "Pricing", roles: ["admin"] },
+    ];
+
+    const techItems = [
+      { path: "/maintenance/templates", label: "Templates", roles: ["admin", "technician"] },
+      { path: "/maintenance/plans", label: "Plans", roles: ["admin", "technician"] },
+      { path: "/maintenance/jobs", label: "Jobs", roles: ["admin", "technician"] },
+      { path: "/parts", label: "Parts", roles: ["admin", "technician"] },
+    ];
+
+    const customerItems = [
+      { path: "/customer-portal", label: "My Portal", roles: ["customer"] },
+    ];
+
+    const technicianItems = [
+      { path: "/technician-portal", label: "My Jobs", roles: ["technician"] },
+    ];
+
+    let items = [...baseItems];
+
+    if (user?.role === "admin") {
+      items = [...items, ...adminItems, ...techItems];
+    } else if (user?.role === "technician") {
+      items = [
+        ...items,
+        ...technicianItems,
+        { path: "/maintenance/templates", label: "Templates", roles: ["technician"] },
+        { path: "/maintenance/plans", label: "Plans", roles: ["technician"] },
+        { path: "/maintenance/jobs", label: "Jobs", roles: ["technician"] },
+        { path: "/parts", label: "Parts", roles: ["technician"] },
+      ];
+    } else if (user?.role === "customer") {
+      items = [...items, ...customerItems];
+    }
+
+    return items;
+  };
+
+  const menuItems = getMenuItems();
+
   const styles = {
     container: {
       display: "flex",
@@ -63,117 +117,22 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="app-sidebar">
         <div className="app-sidebar-logo">LiftCare</div>
+        <div className="app-sidebar-role">
+          <small>{user?.role?.toUpperCase()}</small>
+        </div>
         <nav className="app-sidebar-menu">
-          <Link
-            to="/"
-            className={
-              "app-sidebar-link " +
-              (isActive("/") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Dashboard
-          </Link>
-          <Link
-            to="/customers"
-            className={
-              "app-sidebar-link " +
-              (isActive("/customers") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Customers
-          </Link>
-          <Link
-            to="/buildings"
-            className={
-              "app-sidebar-link " +
-              (isActive("/buildings") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Buildings
-          </Link>
-          <Link
-            to="/elevators"
-            className={
-              "app-sidebar-link " +
-              (isActive("/elevators") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Elevators
-          </Link>
-          <Link
-            to="/technicians"
-            className={
-              "app-sidebar-link " +
-              (isActive("/technicians") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Technicians
-          </Link>
-          <Link
-            to="/contracts"
-            className={
-              "app-sidebar-link " +
-              (isActive("/contracts") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Contracts
-          </Link>
-          <Link
-            to="/quotations"
-            className={
-              "app-sidebar-link " +
-              (isActive("/quotations") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Quotations
-          </Link>
-          <Link
-            to="/invoices"
-            className={
-              "app-sidebar-link " +
-              (isActive("/invoices") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Invoices
-          </Link>
-          <Link
-            to="/parts"
-            className={
-              "app-sidebar-link " +
-              (isActive("/parts") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Parts
-          </Link>
-          <Link
-            to="/maintenance/templates"
-            className={
-              "app-sidebar-link " +
-              (isActive("/maintenance/templates")
-                ? "app-sidebar-link-active"
-                : "")
-            }
-          >
-            Templates
-          </Link>
-          <Link
-            to="/maintenance/plans"
-            className={
-              "app-sidebar-link " +
-              (isActive("/maintenance/plans") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Plans
-          </Link>
-          <Link
-            to="/maintenance/jobs"
-            className={
-              "app-sidebar-link " +
-              (isActive("/maintenance/jobs") ? "app-sidebar-link-active" : "")
-            }
-          >
-            Jobs
-          </Link>
+          {menuItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={
+                "app-sidebar-link " +
+                (isActive(item.path) ? "app-sidebar-link-active" : "")
+              }
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
       </aside>
 
@@ -181,7 +140,7 @@ export default function Layout() {
       <div className="app-content-wrapper">
         <header className="app-header">
           <div className="app-header-title">
-            Welcome, {user?.name || "User"}
+            Welcome, {user?.name || "User"} ({user?.role || "guest"})
           </div>
           <button className="button secondary" onClick={logout}>
             Logout

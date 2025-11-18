@@ -17,6 +17,8 @@ import MaintenanceTemplates from "./pages/maintenanceTemplates";
 import MaintenancePlans from "./pages/maintenancePlans";
 import MaintenanceJobs from "./pages/maintenanceJobs";
 import Dashboard from "./pages/main";  // เดี๋ยวแก้ให้เป็น Dashboard จริงภายหลัง
+import TechnicianPortal from "./pages/TechnicianPortal";
+import CustomerPortal from "./pages/CustomerPortal";
 
 // Middleware for login check
 function RequireAuth({ children }) {
@@ -70,6 +72,11 @@ export default function App() {
           <Route path="maintenance/plans" element={<MaintenancePlans />} />
           <Route path="maintenance/jobs" element={<MaintenanceJobs />} />
 
+          {/* Technician info */}
+          <Route path="technician-portal" element={<TechnicianPortal />} />
+
+          {/* Customer info */}
+          <Route path="customer-portal" element={<CustomerPortal />} />
         </Route>
 
       </Routes>
