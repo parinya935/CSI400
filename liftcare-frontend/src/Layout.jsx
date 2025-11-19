@@ -4,113 +4,92 @@ import { useAuth } from "./auth";
 
 export default function Layout() {
   const { user, logout } = useAuth();
-
   const location = useLocation();
+
+  const role = user?.role || "guest";
 
   const isActive = (path) =>
     location.pathname === path ||
     (path !== "/" && location.pathname.startsWith(path));
 
-  // -------- Menu Items by Role --------
-  const getMenuItems = () => {
-    const baseItems = [
-      { path: "/", label: "Dashboard", roles: ["admin", "customer", "technician"] },
-    ];
-
-    const adminItems = [
-      { path: "/customers", label: "Customers", roles: ["admin"] },
-      { path: "/buildings", label: "Buildings", roles: ["admin"] },
-      { path: "/elevators", label: "Elevators", roles: ["admin"] },
-      { path: "/technicians", label: "Technicians", roles: ["admin"] },
-      { path: "/contracts", label: "Contracts", roles: ["admin"] },
-      { path: "/quotations", label: "Quotations", roles: ["admin"] },
-      { path: "/invoices", label: "Invoices", roles: ["admin"] },
-      { path: "/pricing", label: "Pricing", roles: ["admin"] },
-    ];
-
-    const techItems = [
-      { path: "/maintenance/templates", label: "Templates", roles: ["admin", "technician"] },
-      { path: "/maintenance/plans", label: "Plans", roles: ["admin", "technician"] },
-      { path: "/maintenance/jobs", label: "Jobs", roles: ["admin", "technician"] },
-      { path: "/parts", label: "Parts", roles: ["admin", "technician"] },
-    ];
-
-    const customerItems = [
-      { path: "/customer-portal", label: "My Portal", roles: ["customer"] },
-    ];
-
-    const technicianItems = [
-      { path: "/technician-portal", label: "My Jobs", roles: ["technician"] },
-    ];
-
-    let items = [...baseItems];
-
-    if (user?.role === "admin") {
-      items = [...items, ...adminItems, ...techItems];
-    } else if (user?.role === "technician") {
-      items = [
-        ...items,
-        ...technicianItems,
-        { path: "/maintenance/templates", label: "Templates", roles: ["technician"] },
-        { path: "/maintenance/plans", label: "Plans", roles: ["technician"] },
-        { path: "/maintenance/jobs", label: "Jobs", roles: ["technician"] },
-        { path: "/parts", label: "Parts", roles: ["technician"] },
-      ];
-    } else if (user?.role === "customer") {
-      items = [...items, ...customerItems];
-    }
-
-    return items;
-  };
-
-  const menuItems = getMenuItems();
-
-  const styles = {
-    container: {
-      display: "flex",
-      height: "100vh",
-      background: "#D3D3D3",
-      fontFamily: "sans-serif",
+  // -------- เมนูจัดเป็นหมวดหมู่ --------
+  const sections = [
+    {
+      label: "แดชบอร์ด",
+      items: [
+        {
+          path: "/",
+          label: "ภาพรวมระบบ",
+          roles: ["admin", "customer", "technician"],
+        },
+      ],
     },
-    sidebar: {
-      width: "240px",
-      background: "#003366",
-      color: "white",
-      padding: "20px 0",
-      display: "flex",
-      flexDirection: "column",
-      gap: "10px",
+    {
+      label: "ข้อมูลหลัก (Master Data)",
+      items: [
+        { path: "/customers", label: "ลูกค้า", roles: ["admin"] },
+        { path: "/buildings", label: "อาคาร", roles: ["admin"] },
+        { path: "/elevators", label: "ลิฟต์", roles: ["admin", "technician", "customer"] },
+        { path: "/technicians", label: "ช่าง", roles: ["admin"] },
+      ],
     },
-    menuItem: {
-      padding: "12px 20px",
-      color: "white",
-      textDecoration: "none",
-      fontSize: "15px",
-      cursor: "pointer",
+    {
+      label: "งานซ่อมบำรุง (Maintenance)",
+      items: [
+        { path: "/maintenance/jobs", label: "ใบงานบำรุงรักษา", roles: ["admin", "technician"] },
+        { path: "/maintenance/plans", label: "แผนบำรุงรักษา", roles: ["admin", "technician"] },
+        { path: "/maintenance/templates", label: "เทมเพลตงานบำรุงรักษา", roles: ["admin", "technician"] },
+        { path: "/parts", label: "อะไหล่ (Parts)", roles: ["admin", "technician"] },
+      ],
     },
-    menuItemHover: {
-      background: "#004080",
+    {
+      label: "สัญญา & การเงิน",
+      items: [
+        { path: "/contracts", label: "สัญญา", roles: ["admin"] },
+        { path: "/quotations", label: "ใบเสนอราคา", roles: ["admin"] },
+        { path: "/invoices", label: "ใบแจ้งหนี้", roles: ["admin"] },
+        { path: "/pricing", label: "ราคา / แพ็กเกจ", roles: ["admin"] },
+      ],
     },
-    header: {
-      height: "60px",
-      background: "#003366",
-      color: "white",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "0 20px",
-      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+    {
+      label: "พอร์ทัล",
+      items: [
+        {
+          path: "/technician-portal",
+          label: "Technician Portal",
+          roles: ["admin", "technician"],
+        },
+        {
+          path: "/customer-portal",
+          label: "Customer Portal",
+          roles: ["admin", "customer"],
+        },
+      ],
     },
-    content: {
-      flex: 1,
-      padding: "20px",
-      overflowY: "auto",
+    {
+      label: "การตั้งค่า",
+      items: [
+        {
+          path: "/settings/account",
+          label: "บัญชีผู้ใช้",
+          roles: ["admin", "technician", "customer"],
+        },
+        {
+          path: "/settings/password",
+          label: "เปลี่ยนรหัสผ่าน",
+          roles: ["admin", "technician", "customer"],
+        },
+      ],
     },
-    title: {
-      fontSize: "18px",
-      fontWeight: "600",
-    },
-  };
+  ];
+
+  // แสดงเฉพาะเมนูที่ตรงกับ role
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => item.roles.includes(role)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <div className="app-layout">
@@ -118,32 +97,39 @@ export default function Layout() {
       <aside className="app-sidebar">
         <div className="app-sidebar-logo">LiftCare</div>
         <div className="app-sidebar-role">
-          <small>{user?.role?.toUpperCase()}</small>
+          <small>{role.toUpperCase()}</small>
         </div>
-        <nav className="app-sidebar-menu">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={
-                "app-sidebar-link " +
-                (isActive(item.path) ? "app-sidebar-link-active" : "")
-              }
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+
+        {visibleSections.map((section) => (
+          <div key={section.label} className="app-sidebar-section">
+            <div className="app-sidebar-section-label">{section.label}</div>
+
+            <nav className="app-sidebar-menu">
+              {section.items.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={
+                    "app-sidebar-link " +
+                    (isActive(item.path) ? "app-sidebar-link-active" : "")
+                  }
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        ))}
       </aside>
 
-      {/* Right side */}
+      {/* ส่วนเนื้อหาขวา */}
       <div className="app-content-wrapper">
         <header className="app-header">
           <div className="app-header-title">
-            Welcome, {user?.name || "User"} ({user?.role || "guest"})
+            ยินดีต้อนรับ, {user?.name || "ผู้ใช้"} ({user?.role || "guest"})
           </div>
           <button className="button secondary" onClick={logout}>
-            Logout
+            ออกจากระบบ
           </button>
         </header>
 

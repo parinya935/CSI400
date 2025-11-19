@@ -1,42 +1,45 @@
+// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./auth";
+import { AuthProvider, RequireAuth } from "./auth";
 import "./App.css";
 
-// Pages (ใช้ชุดไหนให้ตรงกับชื่อไฟล์จริงในโปรเจกต์คุณนะ)
-import Login from "./pages/login";
-import Register from "./pages/register";
-
 import Layout from "./Layout";
-import Customers from "./pages/Customers";
-import Buildings from "./pages/buildings";
-import Elevators from "./pages/elevators";
-import Technician from "./pages/technicians";
-import Contracts from "./pages/Contracts";
-import Quotations from "./pages/quotations";
-import Invoices from "./pages/invoices";
-import Pricing from "./pages/price";
-import Parts from "./pages/Parts";
-import MaintenanceTemplates from "./pages/maintenanceTemplates";
-import MaintenancePlans from "./pages/maintenancePlans";
-import MaintenanceJobs from "./pages/maintenanceJobs";
-import Dashboard from "./pages/main";
-import TechnicianPortal from "./pages/TechnicianPortal";
-import CustomerPortal from "./pages/CustomerPortal";
 
+// Auth pages
+import Login from "./pages/login.jsx";
+import Register from "./pages/register.jsx";
+
+// Dashboard
+import Dashboard from "./pages/main.jsx";
+
+// Master data
+import Customers from "./pages/customers.jsx";
+import Buildings from "./pages/buildings.jsx";
+import Elevators from "./pages/elevators.jsx";
+import Technicians from "./pages/technicians.jsx";
+
+// Contracts & Finance
+import Contracts from "./pages/contracts.jsx";
+import Quotations from "./pages/quotations.jsx";
+import Invoices from "./pages/invoices.jsx";
+import Pricing from "./pages/price.jsx";
+
+// Parts & Inventory
+import Parts from "./pages/parts.jsx";
+
+// Maintenance
+import MaintenanceTemplates from "./pages/maintenanceTemplates.jsx";
+import MaintenancePlans from "./pages/maintenancePlans.jsx";
+import MaintenanceJobs from "./pages/maintenanceJobs.jsx";
+
+// Portals
+import TechnicianPortal from "./pages/TechnicianPortal.jsx";
+import CustomerPortal from "./pages/CustomerPortal.jsx";
+
+// Settings
 import AccountPage from "./pages/AccountPage.jsx";
 import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
 
-// ----- Middleware ตรวจสอบ login -----
-function RequireAuth({ children }) {
-  const { user, loading, isAuthed } = useAuth();
-
-  if (loading) return <div>Loading...</div>;
-  if (!isAuthed) return <Login />;
-
-  return children;
-}
-
-// ----- แอปหลัก -----
 export default function App() {
   return (
     <AuthProvider>
@@ -46,7 +49,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected routes ที่หุ้มด้วย Layout */}
+          {/* Protected routes with Layout */}
           <Route
             path="/"
             element={
@@ -62,7 +65,7 @@ export default function App() {
             <Route path="customers" element={<Customers />} />
             <Route path="buildings" element={<Buildings />} />
             <Route path="elevators" element={<Elevators />} />
-            <Route path="technicians" element={<Technician />} />
+            <Route path="technicians" element={<Technicians />} />
 
             {/* Contracts & Finance */}
             <Route path="contracts" element={<Contracts />} />
@@ -81,7 +84,7 @@ export default function App() {
             <Route path="maintenance/plans" element={<MaintenancePlans />} />
             <Route path="maintenance/jobs" element={<MaintenanceJobs />} />
 
-            {/* Technician / Customer Portal */}
+            {/* Portals */}
             <Route path="technician-portal" element={<TechnicianPortal />} />
             <Route path="customer-portal" element={<CustomerPortal />} />
 
@@ -90,7 +93,7 @@ export default function App() {
             <Route path="settings/password" element={<ChangePasswordPage />} />
           </Route>
 
-          {/* ถ้า path ไม่ตรงอะไรเลย → เด้งกลับหน้าแรก */}
+          {/* Fallback ทุก path ที่ไม่รู้จัก → กลับไปหน้าแรก */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
