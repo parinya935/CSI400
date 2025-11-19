@@ -3,15 +3,17 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* ใช้โหมด light ธรรมดา */
+  color-scheme: light;
+  color: #111827;
+  background-color: #f3f4f6;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
 
 a {
   font-weight: 500;
@@ -24,11 +26,11 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: #f3f4f6;   /* หรือจะไม่ใส่ก็ได้ ให้ login.jsx คุมเอง */
 }
+
 
 h1 {
   font-size: 3.2em;
@@ -66,3 +68,47 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+#root {
+  min-height: 100vh;
+}
+
+/* ROOT DEFAULT (Light) */
+body[data-theme="light"] {
+  background: #f3f4f6;
+  color: #111;
+}
+
+/* DARK MODE */
+body[data-theme="dark"] {
+  background: #0f172a;
+}
+
+/* card / box background */
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .box,
+body[data-theme="dark"] header {
+  background: #1f2937 !important;
+  color: #f9fafb !important;
+}
+
+/* dropdown */
+body[data-theme="dark"] .dropdown {
+  background: #1f2937 !important;
+  color: #f9fafb !important;
+}
+
+/* input & button */
+body[data-theme="dark"] input,
+body[data-theme="dark"] button {
+  background: #374151 !important;
+  color: white !important;
+  border-color: #4b5563 !important;
+}
+
+body[data-theme="dark"] .lift-card,
+body[data-theme="dark"] header {
+  background: #111827 !important;
+  color: #f9fafb !important;
+}
+
