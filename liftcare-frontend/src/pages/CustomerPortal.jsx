@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
-import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
+import { useRoleCheck, useCustomerId, ProtectedPage } from "../hooks/useRoleCheck";
 
 export default function CustomerPortal() {
   const api = useApi();
   const userRole = useRoleCheck();
+  const customerId = useCustomerId(); // ✅ ดึง customer_id
 
   const [customerData, setCustomerData] = useState(null);
   const [buildings, setBuildings] = useState([]);
@@ -17,6 +18,13 @@ export default function CustomerPortal() {
   const [error, setError] = useState("");
 
   async function loadCustomerPortal() {
+    // ✅ ตรวจสอบว่ามี customer_id
+    if (!customerId) {
+      setError("Customer ID not found. Please contact admin.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");

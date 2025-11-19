@@ -4,8 +4,8 @@ import { useApi } from "../api";
 import { useAuth } from "../auth";
 
 export default function Login() {
-  const [email, setEmail] = useState("admin@liftcare.local");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
   const api = useApi();
   const { login, isAuthed } = useAuth();

@@ -511,44 +511,84 @@ router.delete("/maintenance/jobs/:id", authRequired, roleRequired("admin"), asyn
   }
 });
 
-// Tickets
+// REPLACE: Tickets endpoints (moved from server.js)
+// GET /api/tickets
 router.get("/tickets", authRequired, async (req, res) => {
-    try {
-      const [tickets] = await pool.query(`
-        SELECT t.*, e.name as elevator_name 
-        FROM tickets t
-        LEFT JOIN elevators e ON t.elevator_id = e.id
-        ORDER BY t.created_at DESC
-      `);
-      res.json(tickets);
-    } catch (error) {
-      console.error('Fetch tickets error:', error);
-      res.status(500).json({ message: "Internal server error" });
+  try {
+    let sql = `
+      SELECT 
+        t.*,
+        e.name AS elevator_name
+      FROM tickets t
+      LEFT JOIN elevators e ON t.elevator_id = e.id
+    `;
+    const params = [];
+
+    // ถ้าเป็นลูกค้า → เห็นเฉพาะของตัวเอง
+    if (req.user.role === "customer" && req.user.customer_id) {
+      sql += " WHERE t.customer_id = ?";
+      params.push(req.user.customer_id);
     }
+
+    sql += " ORDER BY t.created_at DESC LIMIT 100";
+
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Fetch tickets error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
+// POST /api/tickets
 router.post("/tickets", authRequired, async (req, res) => {
-  const { elevator_id, description, type, priority, source } = req.body || {};
-  if (!elevator_id || !description) {
-    return res.status(400).json({ message: "Missing elevator_id or description" });
+  const { elevatorId, description, title, priority } = req.body || {};
+  if (!elevatorId || !description) {
+    return res.status(400).json({ message: "Missing data" });
   }
 
-  try {
-    const ticketId = `T-${Date.now()}`;
+  const ticketId = `T-${Date.now()}`;
 
+  try {
     await pool.query(
-      'INSERT INTO tickets (id, elevator_id, description, reporter_id, type, priority, source, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [ticketId, elevator_id, description, req.user.id, type || 'emergency_repair', priority || 'medium', source || 'system', 'pending']
+      `INSERT INTO tickets 
+        (id, elevator_id, reporter_id, customer_id, description, title, priority, source) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        ticketId,
+        elevatorId,
+        req.user.id,
+        req.user.customer_id || null, // ผูก ticket กับ customer ถ้ามี
+        description,
+        title || null,
+        priority || "medium",
+        "internal",
+      ]
     );
 
     const [tickets] = await pool.query(
-      'SELECT * FROM tickets WHERE id = ?',
+      `SELECT t.*, e.name AS elevator_name
+       FROM tickets t
+       LEFT JOIN elevators e ON t.elevator_id = e.id
+       WHERE t.id = ?`,
       [ticketId]
+    );
+
+    await pool.query(
+      `INSERT INTO notifications (user_id, type, channel, title, body)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        req.user.id,
+        "new_ticket",
+        "in_app",
+        `สร้างใบงาน ${ticketId}`,
+        description.slice(0, 200),
+      ]
     );
 
     return res.status(201).json({ message: "Ticket created", ticket: tickets[0] });
   } catch (error) {
-    console.error('Create ticket error:', error);
+    console.error("Create ticket error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 });

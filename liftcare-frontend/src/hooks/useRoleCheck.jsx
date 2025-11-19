@@ -3,6 +3,12 @@ export function useRoleCheck() {
   return user.role || null;
 }
 
+// ✅ ดึง customer_id จาก localStorage
+export function useCustomerId() {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  return user.customer_id || null;
+}
+
 export function canAccess(userRole, allowedRoles) {
   if (!userRole) return false;
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];

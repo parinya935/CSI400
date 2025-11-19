@@ -69,20 +69,46 @@ Routes.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = signAccessToken({
+    // ✅ ถ้า role เป็น customer ให้ดึง customer_id
+    let customer_id = null;
+    if (user.role === 'customer') {
+      const [customers] = await pool.query(
+        'SELECT id FROM customers WHERE contact_email = ? LIMIT 1',
+        [email]
+      );
+      if (customers.length > 0) {
+        customer_id = customers[0].id;
+      }
+    }
+
+    const tokenPayload = {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role
-    });
+    };
+    
+    // ✅ เพิ่ม customer_id ใน token ถ้ามี
+    if (customer_id) {
+      tokenPayload.customer_id = customer_id;
+    }
+
+    const token = signAccessToken(tokenPayload);
+
+    const responseUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role
+    };
+
+    // ✅ เพิ่ม customer_id ในการตอบกลับ
+    if (customer_id) {
+      responseUser.customer_id = customer_id;
+    }
 
     return res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
-      },
+      user: responseUser,
       token
     });
   } catch (error) {
