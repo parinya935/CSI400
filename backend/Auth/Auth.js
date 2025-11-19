@@ -113,7 +113,7 @@ Routes.post("/login", async (req, res) => {
 
     // ✅ ถ้า role เป็น customer ให้ดึง customer_id
     let customer_id = null;
-    if (user.role === 'customer') {
+    if (users.role === 'customer') {
       const [customers] = await pool.query(
         'SELECT id FROM customers WHERE contact_email = ? LIMIT 1',
         [email]
@@ -124,10 +124,10 @@ Routes.post("/login", async (req, res) => {
     }
 
     const tokenPayload = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      role: users.role
     };
     
     // ✅ เพิ่ม customer_id ใน token ถ้ามี
@@ -138,10 +138,10 @@ Routes.post("/login", async (req, res) => {
     const token = signAccessToken(tokenPayload);
 
     const responseUser = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      role: users.role
     };
 
     // ✅ เพิ่ม customer_id ในการตอบกลับ
