@@ -10,13 +10,20 @@ import main from "./Routes/Core.js";
 import contract from "./Routes/Contracts.js";
 import maintain from "./Routes/Maintenance.js";
 import parts from "./Routes/Parts.js";
+import mysql from 'mysql2/promise';
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+
 
 dotenv.config();
+
 
 // ---- Config ----
 const app = express();
 const PORT = process.env.PORT || 4000;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
+const JWT_SECRET = process.env.JWT_SECRET || "super-secret-change-me";
 
 // ---- Security & middleware ----
 app.use(helmet());

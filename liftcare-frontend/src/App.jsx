@@ -1,8 +1,11 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useAuth } from "./auth";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./auth";
 import "./App.css";
+
+// Pages (ใช้ชุดไหนให้ตรงกับชื่อไฟล์จริงในโปรเจกต์คุณนะ)
 import Login from "./pages/login";
 import Register from "./pages/register";
+
 import Layout from "./Layout";
 import Customers from "./pages/Customers";
 import Buildings from "./pages/buildings";
@@ -16,11 +19,14 @@ import Parts from "./pages/Parts";
 import MaintenanceTemplates from "./pages/maintenanceTemplates";
 import MaintenancePlans from "./pages/maintenancePlans";
 import MaintenanceJobs from "./pages/maintenanceJobs";
-import Dashboard from "./pages/main";  // เดี๋ยวแก้ให้เป็น Dashboard จริงภายหลัง
+import Dashboard from "./pages/main";
 import TechnicianPortal from "./pages/TechnicianPortal";
 import CustomerPortal from "./pages/CustomerPortal";
 
-// Middleware for login check
+import AccountPage from "./pages/AccountPage.jsx";
+import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
+
+// ----- Middleware ตรวจสอบ login -----
 function RequireAuth({ children }) {
   const { user, loading, isAuthed } = useAuth();
 
@@ -30,83 +36,62 @@ function RequireAuth({ children }) {
   return children;
 }
 
-export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-
-        {/* Protected with Layout */}
-        <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <Layout />
-            </RequireAuth>
-          }
-        >
-
-          {/* Dashboard */}
-          <Route index element={<Dashboard />} />
-
-          {/* Master Data */}
-          <Route path="customers" element={<Customers />} />
-          <Route path="buildings" element={<Buildings />} />
-          <Route path="elevators" element={<Elevators />} />
-          <Route path="technicians" element={<Technician />} />
-
-          {/* Contracts & Finance */}
-          <Route path="contracts" element={<Contracts />} />
-          <Route path="quotations" element={<Quotations />} />
-          <Route path="invoices" element={<Invoices />} />
-          <Route path="pricing" element={<Pricing />} />
-
-          {/* Parts & Inventory */}
-          <Route path="parts" element={<Parts />} />
-
-          {/* Maintenance */}
-          <Route path="maintenance/templates" element={<MaintenanceTemplates />} />
-          <Route path="maintenance/plans" element={<MaintenancePlans />} />
-          <Route path="maintenance/jobs" element={<MaintenanceJobs />} />
-
-          {/* Technician info */}
-          <Route path="technician-portal" element={<TechnicianPortal />} />
-
-          {/* Customer info */}
-          <Route path="customer-portal" element={<CustomerPortal />} />
-        </Route>
-
-      </Routes>
-    </BrowserRouter>
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, RequireAuth } from "./auth";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/register.jsx";
-import Main from "./pages/main.jsx";
-import AccountPage from "./pages/AccountPage.jsx";
-import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
-
+// ----- แอปหลัก -----
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Protected routes ที่หุ้มด้วย Layout */}
           <Route
             path="/"
             element={
               <RequireAuth>
-                <Main />
+                <Layout />
               </RequireAuth>
             }
-          />
+          >
+            {/* Dashboard */}
+            <Route index element={<Dashboard />} />
+
+            {/* Master Data */}
+            <Route path="customers" element={<Customers />} />
+            <Route path="buildings" element={<Buildings />} />
+            <Route path="elevators" element={<Elevators />} />
+            <Route path="technicians" element={<Technician />} />
+
+            {/* Contracts & Finance */}
+            <Route path="contracts" element={<Contracts />} />
+            <Route path="quotations" element={<Quotations />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="pricing" element={<Pricing />} />
+
+            {/* Parts & Inventory */}
+            <Route path="parts" element={<Parts />} />
+
+            {/* Maintenance */}
+            <Route
+              path="maintenance/templates"
+              element={<MaintenanceTemplates />}
+            />
+            <Route path="maintenance/plans" element={<MaintenancePlans />} />
+            <Route path="maintenance/jobs" element={<MaintenanceJobs />} />
+
+            {/* Technician / Customer Portal */}
+            <Route path="technician-portal" element={<TechnicianPortal />} />
+            <Route path="customer-portal" element={<CustomerPortal />} />
+
+            {/* Settings */}
+            <Route path="settings/account" element={<AccountPage />} />
+            <Route path="settings/password" element={<ChangePasswordPage />} />
+          </Route>
+
+          {/* ถ้า path ไม่ตรงอะไรเลย → เด้งกลับหน้าแรก */}
           <Route path="*" element={<Navigate to="/" replace />} />
-          <Route path="/settings/account" element={<AccountPage />} />
-          <Route path="/settings/password" element={<ChangePasswordPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
