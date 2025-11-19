@@ -47,10 +47,31 @@ export default function Buildings() {
     }
   }
 
+  // handleChange: กรณีเปลี่ยน customer จะ auto-fill building name จาก customer.name
   function handleChange(e) {
-    const { name, value } = e.target;
+  const { name, value } = e.target;
+
+  if (name === "customer_id") {
+    setForm((f) => {
+      const updated = { ...f, customer_id: value };
+
+      const customer = customers.find((x) => x.id === Number(value));
+
+      // เปลี่ยน Building Name ตาม customer ทุกครั้งที่มีการเปลี่ยน
+      if (customer) {
+        updated.name = customer.name || "";
+      } else if (!value) {
+        // ถ้าเลือกเป็นค่าว่าง กลับมาเคลียร์ชื่ออาคารด้วย (จะใส่หรือไม่ใส่บรรทัดนี้ก็ได้)
+        updated.name = "";
+      }
+
+      return updated;
+    });
+  } else {
     setForm((f) => ({ ...f, [name]: value }));
   }
+}
+
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -123,9 +144,16 @@ export default function Buildings() {
     setForm(emptyForm);
   }
 
+  // label ที่ใช้แสดงใน dropdown / ตาราง (ไม่มีวงเล็บด้านหลัง)
+  function customerLabel(c) {
+    const contact = c.contact || c.contact_name || c.contact_person || "";
+    if (contact) return contact; // แสดงชื่อ contact อย่างเดียว
+    return c.name || `Customer #${c.id}`;
+  }
+
   function customerName(id) {
-    const c = customers.find((x) => x.id === id);
-    return c ? c.name : "-";
+    const c = customers.find((x) => x.id === Number(id));
+    return c ? customerLabel(c) : "-";
   }
 
   return (
@@ -169,10 +197,10 @@ export default function Buildings() {
                     value={form.customer_id}
                     onChange={handleChange}
                   >
-                    <option value="">-- select customer --</option>
+                    <option value="">-- เลือกลูกค้า / ผู้ติดต่อ --</option>
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
+                        {customerLabel(c)} {/* ไม่มีวงเล็บแล้ว */}
                       </option>
                     ))}
                   </select>

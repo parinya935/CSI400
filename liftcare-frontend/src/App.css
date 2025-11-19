@@ -74,6 +74,8 @@ body {
   display: flex;
   flex-direction: column;
   padding: 20px 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .app-sidebar-logo {
