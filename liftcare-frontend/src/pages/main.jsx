@@ -3,14 +3,6 @@ import { useEffect, useState } from "react";
 import { useApi } from "../api";
 import { useRoleCheck } from "../hooks/useRoleCheck";
 
-import LayoutTopbar from "../components/LayoutTopbar.jsx";
-import SummaryCards from "../components/SummaryCards.jsx";
-import TicketsSection from "../components/TicketsSection.jsx";
-// import NotificationsSection from "../components/NotificationsSection.jsx"; // ❌ ไม่ใช้แล้ว
-import ElevatorsSection from "../components/ElevatorsSection.jsx";
-import AlertsSection from "../components/AlertsSection.jsx";
-import TicketModal from "../components/TicketModal.jsx";
-
 export default function Main() {
   const api = useApi();
   const userRole = useRoleCheck();
