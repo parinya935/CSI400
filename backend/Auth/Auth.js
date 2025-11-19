@@ -1,61 +1,102 @@
-// ---- Authentication Middleware ----
+// backend/Auth/Auth.js
+// รวมทุกอย่างที่เกี่ยวกับการยืนยันตัวตน: register / login / me / change-password
 import express from "express";
 import jwt from "jsonwebtoken";
-import authRequired from "./middle.js";
 import bcrypt from "bcryptjs";
-import pool from "../DB/db.js";
 import dotenv from "dotenv";
+
+// middleware ตรวจ JWT
+import authRequired from "./middle.js";
+
+// การเชื่อมต่อฐานข้อมูล (pool)
+// *** ตรงนี้สมมติว่าคุณมีไฟล์ DB/db.js ที่ export pool ออกมาแล้ว ***
+// ถ้าไม่มีไฟล์นี้ ให้เปลี่ยนมา import pool จากที่คุณใช้อยู่จริง
+import pool from "../DB/db.js";
+
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
+// ใช้ Router เพราะใน server.js มี app.use("/auth", Routes)
 const Routes = express.Router();
 
-function signAccessToken(user) {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: "2h" });
+// ---------------- Helper ----------------
+function buildUserPayload(row) {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    role: row.role,
+    customer_id: row.customer_id ?? null,
+  };
 }
 
-// ---- Auth Routes ----
+function signAccessToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
+}
+
+// ---------------------------------------------------------------------------
+// POST /auth/register  (ผ่าน server.js → app.use('/auth', Routes))
+// ---------------------------------------------------------------------------
 Routes.post("/register", async (req, res) => {
-  const { email, password, name } = req.body || {};
+  const { email, password, name, customerId } = req.body || {};
+
   if (!email || !password || !name) {
-    return res.status(400).json({ message: "email, password, name are required" });
+    return res
+      .status(400)
+      .json({ message: "email, password, name are required" });
   }
 
   try {
-    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    // เช็กว่า email ซ้ำหรือยัง
+    const [users] = await pool.query("SELECT id FROM users WHERE email = ?", [
+      email,
+    ]);
     if (users.length > 0) {
       return res.status(409).json({ message: "Email already in use" });
     }
 
+    // hash password แล้วบันทึก
     const password_hash = await bcrypt.hash(password, 10);
-
-    // ค่า default เป็น 'customer'
-    const defaultRole = 'customer';
-
     const [result] = await pool.query(
-      'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-      [email, password_hash, name, defaultRole]
+      "INSERT INTO users (email, password_hash, name, role, customer_id) VALUES (?, ?, ?, ?, ?)",
+      [email, password_hash, name, "customer", customerId || null]
     );
 
-    const user = { id: result.insertId, email, name, role: defaultRole };
-    const token = signAccessToken(user);
-    return res.status(201).json({ user, token });
+    const userPayload = {
+      id: result.insertId,
+      email,
+      name,
+      role: "customer",
+      customer_id: customerId || null,
+    };
+
+    const token = signAccessToken(userPayload);
+
+    return res.status(201).json({
+      user: userPayload,
+      token,
+    });
   } catch (error) {
-    console.error('Register error:', error);
+    console.error("Register error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// ---------------------------------------------------------------------------
+// POST /auth/login
+// ---------------------------------------------------------------------------
 Routes.post("/login", async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
-    return res.status(400).json({ message: "email and password are required" });
+    return res
+      .status(400)
+      .json({ message: "email and password are required" });
   }
 
   try {
     const [users] = await pool.query(
-      'SELECT id, email, password_hash, name, role FROM users WHERE email = ?',
+      "SELECT id, email, password_hash, name, role, customer_id FROM users WHERE email = ?",
       [email]
     );
 
@@ -63,36 +104,84 @@ Routes.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const user = users[0];
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) {
+    const userRow = users[0];
+
+    const match = await bcrypt.compare(password, userRow.password_hash);
+    if (!match) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = signAccessToken({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
-    });
+    const payload = buildUserPayload(userRow);
+    const token = signAccessToken(payload);
 
     return res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
-      },
-      token
+      token,
+      user: payload,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// ---------------------------------------------------------------------------
+// GET /auth/me  (ดึงข้อมูลผู้ใช้จาก token)
+// ---------------------------------------------------------------------------
 Routes.get("/me", authRequired, (req, res) => {
   return res.json({ user: req.user });
+});
+
+// ---------------------------------------------------------------------------
+// POST /auth/change-password  (ใช้กับหน้า ChangePasswordPage)
+// ---------------------------------------------------------------------------
+Routes.post("/change-password", authRequired, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+
+  if (!currentPassword || !newPassword) {
+    return res
+      .status(400)
+      .json({ message: "ต้องกรอกรหัสผ่านเดิมและรหัสผ่านใหม่" });
+  }
+
+  if (newPassword.length < 8) {
+    return res
+      .status(400)
+      .json({ message: "รหัสผ่านใหม่ควรมีอย่างน้อย 8 ตัวอักษร" });
+  }
+
+  try {
+    const userId = req.user.id;
+
+    // ดึง hash เดิมจากฐานข้อมูล
+    const [rows] = await pool.query(
+      "SELECT password_hash FROM users WHERE id = ?",
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "ไม่พบผู้ใช้ในระบบ" });
+    }
+
+    const row = rows[0];
+
+    // ตรวจรหัสผ่านเดิมว่าถูกไหม
+    const ok = await bcrypt.compare(currentPassword, row.password_hash);
+    if (!ok) {
+      return res.status(401).json({ message: "รหัสผ่านเดิมไม่ถูกต้อง" });
+    }
+
+    // hash ใหม่แล้วอัปเดต
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [
+      newHash,
+      userId,
+    ]);
+
+    return res.json({ message: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว" });
+  } catch (err) {
+    console.error("Change password error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 export default Routes;

@@ -1,27 +1,49 @@
 // src/pages/ChangePasswordPage.jsx
 import { useState } from "react";
+import { useApi } from "../api";
 
 export default function ChangePasswordPage() {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function onSubmit(e) {
+  const api = useApi();
+
+  // เงื่อนไขว่าพร้อมให้กดปุ่มหรือยัง
+  const isValid =
+    current.trim().length > 0 &&
+    next.trim().length >= 8 &&
+    confirm.trim().length > 0 &&
+    next === confirm;
+
+  async function onSubmit(e) {
     e.preventDefault();
-    if (!current || !next || !confirm) {
-      setMsg("กรุณากรอกข้อมูลให้ครบทุกช่อง");
-      return;
+    // กันเผื่อผู้ใช้ force submit (เช่น กด Enter) ตอน invalid
+    if (!isValid || loading) return;
+
+    setMsg("");
+    setLoading(true);
+
+    try {
+      // เรียก backend: /auth/change-password
+      const res = await api.post("/auth/change-password", {
+        currentPassword: current,
+        newPassword: next,
+      });
+
+      setMsg(res?.message || "✅ เปลี่ยนรหัสผ่านเรียบร้อยแล้ว");
+      // เคลียร์ฟอร์มหลังทำสำเร็จ
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+    } catch (err) {
+      console.error("Change password error:", err);
+      setMsg(err.message || "เปลี่ยนรหัสผ่านไม่สำเร็จ");
+    } finally {
+      setLoading(false);
     }
-    if (next.length < 8) {
-      setMsg("รหัสผ่านใหม่ควรมีอย่างน้อย 8 ตัวอักษร");
-      return;
-    }
-    if (next !== confirm) {
-      setMsg("รหัสผ่านใหม่และการยืนยันไม่ตรงกัน");
-      return;
-    }
-    setMsg("ตัวอย่างหน้าจอเท่านั้น ยังไม่ได้เชื่อมต่อระบบเปลี่ยนรหัสผ่าน");
   }
 
   return (
@@ -81,8 +103,15 @@ export default function ChangePasswordPage() {
           </section>
 
           <div style={styles.footerRow}>
-            <button type="submit" style={styles.saveBtn}>
-              💾 บันทึกการเปลี่ยนรหัสผ่าน
+            <button
+              type="submit"
+              style={{
+                ...styles.saveBtn,
+                ...(loading || !isValid ? styles.saveBtnDisabled : {}),
+              }}
+              disabled={loading || !isValid}
+            >
+              {loading ? "กำลังบันทึก..." : "💾 บันทึกการเปลี่ยนรหัสผ่าน"}
             </button>
 
             {msg && <p style={styles.msg}>{msg}</p>}
@@ -131,8 +160,6 @@ const styles = {
     gap: 6,
   },
   label: { fontSize: 13, fontWeight: 600, color: "#374151" },
-
-  /** ------------------------ Input Premium Style ------------------------- **/
   input: {
     height: 42,
     padding: "0 14px",
@@ -144,15 +171,16 @@ const styles = {
     outline: "none",
     boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
   },
-
-  /* เพิ่มเอฟเฟกต์โฟกัสด้วย JS Dynamic */
   twoCols: {
     display: "grid",
     gap: 12,
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
   },
-
-  /** ------------------------ Save Button Premium ------------------------- **/
+  footerRow: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
   saveBtn: {
     padding: "12px 20px",
     fontSize: 15,
@@ -165,7 +193,11 @@ const styles = {
     boxShadow: "0 4px 12px rgba(30,64,175,0.25)",
     transition: "all 0.25s ease",
   },
-
+  saveBtnDisabled: {
+    opacity: 0.5,
+    cursor: "not-allowed",
+    boxShadow: "none",
+  },
   msg: {
     fontSize: 13,
     color: "#6b7280",
