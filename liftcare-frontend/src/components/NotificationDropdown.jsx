@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 export default function NotificationDropdown({
   notifications = [],
   onMarkRead = () => {},
+  onDelete = () => {},
   onClose = () => {},
 }) {
   const dropdownRef = useRef(null);
@@ -20,7 +21,6 @@ export default function NotificationDropdown({
 
   return (
     <div ref={dropdownRef} style={styles.container}>
-
       {/* Header */}
       <div style={styles.header}>
         <span style={styles.headerTitle}>การแจ้งเตือน</span>
@@ -36,18 +36,40 @@ export default function NotificationDropdown({
 
         {notifications.map((n) => (
           <div key={n.id} style={styles.itemRow}>
-            <span style={styles.message}>{n.body || n.title}</span>
+            {/* ด้านซ้าย: ข้อความ + เวลา */}
+            <div style={styles.itemLeft}>
+              <span style={styles.message}>{n.body || n.title}</span>
+              {n.sent_at && (
+                <div style={styles.time}>
+                  {new Date(n.sent_at).toLocaleString("th-TH")}
+                </div>
+              )}
+            </div>
+
+            {/* ด้านขวา ปุ่มลบ */}
+            <button
+              style={styles.deleteBtn}
+              onClick={() => onDelete(n.id)}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#fee2e2")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "#ef4444")
+              }
+            >
+              ลบ
+            </button>
           </div>
         ))}
       </div>
 
-      {/* ⬇ Footer — ปุ่มอยู่ล่างสุด */}
-      {notifications.some(n => !n.is_read) && (
+      {/* Footer */}
+      {notifications.some((n) => !n.is_read) && (
         <div style={styles.footer}>
           <button
             style={styles.footerBtn}
             onClick={() => {
-              notifications.forEach(n => {
+              notifications.forEach((n) => {
                 if (!n.is_read) onMarkRead(n.id);
               });
             }}
@@ -56,7 +78,6 @@ export default function NotificationDropdown({
           </button>
         </div>
       )}
-
     </div>
   );
 }
@@ -69,8 +90,9 @@ const styles = {
     width: 380,
     minHeight: 250,
     maxHeight: 480,
+    overflowY: "auto",
     display: "flex",
-    flexDirection: "column",          // ★ ดัน footer ลงล่าง
+    flexDirection: "column",
     background: "#ffffff",
     borderRadius: 18,
     border: "1px solid rgba(15,23,42,0.10)",
@@ -99,8 +121,7 @@ const styles = {
   },
 
   list: {
-    flex: 1,                            // ★ ให้พื้นที่ส่วนนี้ยืดเต็ม
-    overflowY: "auto",
+    flex: 1,
     display: "flex",
     flexDirection: "column",
     gap: 10,
@@ -112,22 +133,56 @@ const styles = {
     padding: "8px 4px",
   },
 
+  // แถวหนึ่งของ noti
   itemRow: {
-    padding: "10px 8px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+    padding: "12px 10px",
     borderRadius: 10,
     background: "#f9fafb",
+  },
+
+  // ด้านซ้าย
+  itemLeft: {
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
+    minWidth: 0,
   },
 
   message: {
     fontSize: 14,
     color: "#111827",
     lineHeight: 1.4,
+    marginBottom: 3,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
 
-  // ★ Footer อยู่ล่างสุดแน่นอน
+  time: {
+    fontSize: 11,
+    color: "#9ca3af",
+  },
+
+  // ปุ่มลบ — จัดให้เรียบร้อย
+  deleteBtn: {
+    fontSize: 12,
+    padding: "6px 12px",
+    borderRadius: 20,
+    border: "1px solid #ef4444",
+    background: "#ef4444",
+    color: "#ffffff",
+    cursor: "pointer",
+    flexShrink: 0,
+    transition: "0.2s ease",
+  },
+
   footer: {
-    marginTop: "12px",
-    paddingTop: "12px",
+    marginTop: 12,
+    paddingTop: 12,
     borderTop: "1px solid #e5e7eb",
     display: "flex",
     justifyContent: "flex-end",

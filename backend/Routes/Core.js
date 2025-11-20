@@ -698,7 +698,6 @@ router.put(
         .json({ message: "name และ building_id จำเป็นต้องมี" });
     }
 
-    // map state ให้ตรง ENUM
     const allowedStates = [
       "normal",
       "fault",
@@ -709,6 +708,19 @@ router.put(
     const safeState = allowedStates.includes(state) ? state : "normal";
 
     try {
+      // 1) ดึง state เดิมมาก่อน
+      const [currentRows] = await pool.query(
+        `SELECT state FROM elevators WHERE id = ?`,
+        [id]
+      );
+
+      if (currentRows.length === 0) {
+        return res.status(404).json({ message: "Elevator not found" });
+      }
+
+      const prevState = currentRows[0].state;
+
+      // 2) อัปเดตข้อมูลลิฟต์
       const [result] = await pool.query(
         `
       UPDATE elevators
@@ -747,6 +759,7 @@ router.put(
         return res.status(404).json({ message: "Elevator not found" });
       }
 
+      // 3) ดึงข้อมูลลิฟต์หลังอัปเดต (เอาไว้ใช้ใน noti)
       const [rows] = await pool.query(
         `
       SELECT e.*, b.name as building_name
@@ -757,7 +770,47 @@ router.put(
         [id]
       );
 
-      res.json(rows[0]);
+      const elevator = rows[0];
+
+      // 4) ถ้า state เปลี่ยนจาก normal<->fault เท่านั้นค่อยแจ้งเตือน
+      const isToFault = prevState === "normal" && safeState === "fault";
+      const isToNormal = prevState === "fault" && safeState === "normal";
+
+      if (isToFault || isToNormal) {
+        // ลบ noti เก่าเกี่ยวกับ state ของลิฟต์ตัวนี้ (สำหรับ user คนนี้)
+        await pool.query(
+          `
+          DELETE FROM notifications
+          WHERE user_id = ?
+            AND type = 'elevator_state'
+            AND channel = 'in_app'
+            AND title LIKE ?
+          `,
+          [req.user.id, `สถานะลิฟต์: ${elevator.id}%`]
+        );
+
+        const title = isToFault
+          ? `สถานะลิฟต์: ${elevator.id} เปลี่ยนเป็น Fault`
+          : `สถานะลิฟต์: ${elevator.id} กลับสู่ปกติ`;
+
+        const body = isToFault
+          ? `ลิฟต์ ${elevator.name || elevator.id} อาคาร ${
+              elevator.building_name || ""
+            } เปลี่ยนจากปกติเป็นขัดข้อง`
+          : `ลิฟต์ ${elevator.name || elevator.id} อาคาร ${
+              elevator.building_name || ""
+            } กลับสู่สถานะปกติ`;
+
+        await pool.query(
+          `
+          INSERT INTO notifications (user_id, type, channel, title, body)
+          VALUES (?, 'elevator_state', 'in_app', ?, ?)
+          `,
+          [req.user.id, title, body]
+        );
+      }
+
+      res.json(elevator);
     } catch (error) {
       console.error("Update elevator error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -940,6 +993,27 @@ router.put(
     }
   }
 );
+
+// ลบ notification ตาม id (เฉพาะของ user คนนั้น)
+router.delete("/notifications/:id", authRequired, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await pool.query(
+      `DELETE FROM notifications WHERE id = ? AND user_id = ?`,
+      [id, req.user.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    return res.json({ message: "deleted" });
+  } catch (error) {
+    console.error("Delete notification error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 // DELETE /api/technicians/:id
 router.delete(

@@ -3,26 +3,78 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import NotificationBell from "./components/NotificationBell";
 import NotificationDropdown from "./components/NotificationDropdown";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useApi } from "./api";
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const api = useApi();
 
   // state สำหรับ dropdown แจ้งเตือน
   const [openNoti, setOpenNoti] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
-  // mock ตัวอย่างจัดเก็บแจ้งเตือน (ถ้ามีของจริงแล้วเดี๋ยวผมเชื่อมให้)
-  // ถ้ายังไม่มี API จริง ใช้เป็น array ว่างไปก่อน
-  const notifications = [];
+  // โหลด noti จาก backend ตอนเปิดหน้า layout
+  useEffect(() => {
+  // โหลดครั้งแรกตอนหน้า mount
+  loadNotifications();
+
+  // แล้วตั้ง interval ให้โหลดซ้ำทุก 10 วิ
+  const id = setInterval(() => {
+    loadNotifications();
+  }, 10000); // 10000 ms = 10 วินาที
+
+  // เคลียร์ตอน component ถูก unmount
+  return () => clearInterval(id);
+}, []);
+
+
+  async function loadNotifications() {
+    try {
+      const data = await api.get("/api/notifications");
+      // backend ส่งเป็น array อยู่แล้ว เช่น [{id, title, body, is_read, ...}]
+      setNotifications(data);
+    } catch (err) {
+      console.error("โหลด notifications ล้มเหลว:", err);
+    }
+  }
 
   // จำนวนที่ยังไม่อ่าน
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  // กดเพื่อ mark as read
-  function onMarkRead(id) {
-    console.log("mark as read:", id);
+  // กดเพื่อ mark เป็นอ่านแล้ว
+  async function onMarkRead(id) {
+    try {
+      // อัปเดต UI ก่อน ให้รู้สึกเร็ว
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id
+            ? { ...n, is_read: 1, read_at: new Date().toISOString() }
+            : n
+        )
+      );
+
+      // ยิงไป backend ให้เซ็ต is_read = 1
+      await api.post(`/api/notifications/${id}/read`, {});
+    } catch (err) {
+      console.error("mark read error:", err);
+    }
   }
+
+    // ลบ noti ทีละอัน
+  async function onDeleteNotification(id) {
+    try {
+      // อัปเดต UI ทันที
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+
+      // ยิงไป backend เพื่อลบจริง
+      await api.delete(`/api/notifications/${id}`);
+    } catch (err) {
+      console.error("delete notification error:", err);
+    }
+  }
+
 
   const role = user?.role || "guest";
 
@@ -169,7 +221,13 @@ export default function Layout() {
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {/* 🔔 ไอคอนระฆัง */}
-            <div style={{ position: "relative" }}>
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
               <NotificationBell
                 unreadCount={unreadCount}
                 onClick={() => setOpenNoti(!openNoti)}
@@ -179,6 +237,7 @@ export default function Layout() {
                 <NotificationDropdown
                   notifications={notifications}
                   onMarkRead={onMarkRead}
+                  onDelete={onDeleteNotification}   /* ⭐ เพิ่มตรงนี้ */
                   onClose={() => setOpenNoti(false)}
                 />
               )}

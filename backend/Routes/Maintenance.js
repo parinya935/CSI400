@@ -805,18 +805,6 @@ router.post("/tickets", authRequired, async (req, res) => {
       [ticketId]
     );
 
-    await pool.query(
-      `INSERT INTO notifications (user_id, type, channel, title, body)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        req.user.id,
-        "new_ticket",
-        "in_app",
-        `สร้างใบงาน ${ticketId}`,
-        description.slice(0, 200),
-      ]
-    );
-
     return res.status(201).json({ message: "Ticket created", ticket: tickets[0] });
   } catch (error) {
     console.error("Create ticket error:", error);
