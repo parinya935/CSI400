@@ -21,6 +21,8 @@
     "lowdb": "^7.0.1",
     "morgan": "^1.10.1",
     "mysql2": "^3.15.3",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   }
 }

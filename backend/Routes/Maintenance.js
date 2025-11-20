@@ -5,6 +5,27 @@ import authRequired, { roleRequired } from "../Auth/middle.js";
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/maintenance/templates:
+ *   get:
+ *     summary: Get maintenance templates
+ *     description: Retrieve all maintenance templates (Admin and Technician only)
+ *     tags: [Maintenance]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of maintenance templates
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/MaintenanceTemplate'
+ *       500:
+ *         description: Internal server error
+ */
 // Template + Checklist (Maintenance Templates)
 // GET: ดึงทั้งหมด
 router.get("/maintenance/templates", authRequired, roleRequired(["admin", "technician"]), async (req, res) => {
@@ -19,6 +40,41 @@ router.get("/maintenance/templates", authRequired, roleRequired(["admin", "techn
   }
 });
 
+/**
+ * @swagger
+ * /api/maintenance/templates:
+ *   post:
+ *     summary: Create maintenance template
+ *     description: Create a new maintenance template (Admin only)
+ *     tags: [Maintenance]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Monthly Check"
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Template created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MaintenanceTemplate'
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Internal server error
+ */
 // POST: สร้าง template ใหม่
 router.post("/maintenance/templates", authRequired, roleRequired("admin"), async (req, res) => {
   const { name, description } = req.body || {};
@@ -42,6 +98,46 @@ router.post("/maintenance/templates", authRequired, roleRequired("admin"), async
   }
 });
 
+/**
+ * @swagger
+ * /api/maintenance/templates/{id}:
+ *   put:
+ *     summary: Update maintenance template
+ *     description: Update maintenance template (Admin only)
+ *     tags: [Maintenance]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Template updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MaintenanceTemplate'
+ *       404:
+ *         description: Template not found
+ *       500:
+ *         description: Internal server error
+ */
 // PUT: แก้ไข template ตาม id
 router.put("/maintenance/templates/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
@@ -76,6 +172,29 @@ router.put("/maintenance/templates/:id", authRequired, roleRequired("admin"), as
   }
 });
 
+/**
+ * @swagger
+ * /api/maintenance/templates/{id}:
+ *   delete:
+ *     summary: Delete maintenance template
+ *     description: Delete a maintenance template (Admin only)
+ *     tags: [Maintenance]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Template deleted successfully
+ *       404:
+ *         description: Template not found
+ *       500:
+ *         description: Internal server error
+ */
 // DELETE: ลบ template ตาม id
 router.delete("/maintenance/templates/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
@@ -94,6 +213,27 @@ router.delete("/maintenance/templates/:id", authRequired, roleRequired("admin"),
   }
 });
 
+/**
+ * @swagger
+ * /api/maintenance/plans:
+ *   get:
+ *     summary: Get maintenance plans
+ *     description: Retrieve maintenance plans (filtered by role)
+ *     tags: [Maintenance]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of maintenance plans
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/MaintenancePlan'
+ *       500:
+ *         description: Internal server error
+ */
 // Plan
 router.get("/maintenance/plans", authRequired, async (req, res) => {
   const { role, customer_id } = req.user || {};
@@ -256,6 +396,27 @@ router.delete("/maintenance/plans/:id", authRequired, roleRequired("admin"), asy
   }
 });
 
+/**
+ * @swagger
+ * /api/maintenance/jobs:
+ *   get:
+ *     summary: Get maintenance jobs
+ *     description: Retrieve maintenance jobs (filtered by role)
+ *     tags: [Maintenance]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of maintenance jobs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/MaintenanceJob'
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/maintenance/jobs", authRequired, async (req, res) => {
   const { role, id: userId, customer_id } = req.user || {};
   try {
@@ -511,6 +672,40 @@ router.delete("/maintenance/jobs/:id", authRequired, roleRequired("admin"), asyn
   }
 });
 
+/**
+ * @swagger
+ * /api/tickets:
+ *   get:
+ *     summary: Get tickets
+ *     description: Retrieve tickets (filtered by role)
+ *     tags: [Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of tickets
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   elevator_id:
+ *                     type: string
+ *                   title:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *                   priority:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *       500:
+ *         description: Internal server error
+ */
 // REPLACE: Tickets endpoints (moved from server.js)
 // GET /api/tickets
 router.get("/tickets", authRequired, async (req, res) => {
@@ -540,6 +735,42 @@ router.get("/tickets", authRequired, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/tickets:
+ *   post:
+ *     summary: Create a new ticket
+ *     description: Create a new support ticket
+ *     tags: [Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - elevatorId
+ *               - description
+ *             properties:
+ *               elevatorId:
+ *                 type: string
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high, critical]
+ *     responses:
+ *       201:
+ *         description: Ticket created successfully
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Internal server error
+ */
 // POST /api/tickets
 router.post("/tickets", authRequired, async (req, res) => {
   const { elevatorId, description, title, priority } = req.body || {};

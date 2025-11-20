@@ -5,6 +5,29 @@ import authRequired, { roleRequired } from "../Auth/middle.js";
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/customers:
+ *   get:
+ *     summary: Get all customers
+ *     description: Retrieve all customers (Admin only)
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of customers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Customer'
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
 // ดึงลูกค้าทั้งหมด (Admin เท่านั้น)
 router.get(
   "/customers",
@@ -27,6 +50,51 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /api/customers:
+ *   post:
+ *     summary: Create a new customer
+ *     description: Add a new customer (Admin only)
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - business_type
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "ABC Company"
+ *               business_type:
+ *                 type: string
+ *                 example: "Commercial"
+ *               address:
+ *                 type: string
+ *               contact_name:
+ *                 type: string
+ *               contact_phone:
+ *                 type: string
+ *               contact_email:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Customer created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Customer'
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Internal server error
+ */
 // เพิ่มลูกค้าใหม่ (Admin เท่านั้น)
 router.post(
   "/customers",
@@ -80,6 +148,55 @@ router.post(
   }
 );
 
+/**
+ * @swagger
+ * /api/customers/{id}:
+ *   put:
+ *     summary: Update a customer
+ *     description: Update customer information (Admin only)
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - business_type
+ *             properties:
+ *               name:
+ *                 type: string
+ *               business_type:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               contact_name:
+ *                 type: string
+ *               contact_phone:
+ *                 type: string
+ *               contact_email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Customer updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Customer'
+ *       404:
+ *         description: Customer not found
+ *       500:
+ *         description: Internal server error
+ */
 // แก้ไขลูกค้า (Admin เท่านั้น)
 router.put(
   "/customers/:id",
@@ -140,6 +257,29 @@ router.put(
   }
 );
 
+/**
+ * @swagger
+ * /api/customers/{id}:
+ *   delete:
+ *     summary: Delete a customer
+ *     description: Delete a customer (Admin only)
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Customer deleted successfully
+ *       404:
+ *         description: Customer not found
+ *       500:
+ *         description: Internal server error
+ */
 // ลบลูกค้า (Admin เท่านั้น)
 router.delete(
   "/customers/:id",
@@ -162,6 +302,27 @@ router.delete(
   }
 );
 
+/**
+ * @swagger
+ * /api/customers/me:
+ *   get:
+ *     summary: Get current customer profile
+ *     description: Retrieve own customer profile (Customer only)
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Customer profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Customer'
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
 // NEW: ลูกค้าดูข้อมูลตัวเอง
 router.get("/customers/me", authRequired, async (req, res) => {
   const { role, customer_id } = req.user || {};
@@ -190,6 +351,27 @@ router.get("/customers/me", authRequired, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/buildings:
+ *   get:
+ *     summary: Get all buildings
+ *     description: Retrieve all buildings (filtered by role)
+ *     tags: [Buildings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of buildings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Building'
+ *       500:
+ *         description: Internal server error
+ */
 // ดึงอาคารทั้งหมด (filter ตาม role)
 router.get("/buildings", authRequired, async (req, res) => {
   const { role, customer_id } = req.user || {};
@@ -218,6 +400,45 @@ router.get("/buildings", authRequired, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/buildings:
+ *   post:
+ *     summary: Create a new building
+ *     description: Add a new building (Admin only)
+ *     tags: [Buildings]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customer_id
+ *               - name
+ *             properties:
+ *               customer_id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               building_type:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Building created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Building'
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Internal server error
+ */
 // สร้างอาคารใหม่
 router.post(
   "/buildings",
