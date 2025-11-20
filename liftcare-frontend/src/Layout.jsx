@@ -1,10 +1,28 @@
 // src/Layout.jsx
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
+import NotificationBell from "./components/NotificationBell";
+import NotificationDropdown from "./components/NotificationDropdown";
+import { useState } from "react";
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
+
+  // state สำหรับ dropdown แจ้งเตือน
+  const [openNoti, setOpenNoti] = useState(false);
+
+  // mock ตัวอย่างจัดเก็บแจ้งเตือน (ถ้ามีของจริงแล้วเดี๋ยวผมเชื่อมให้)
+  // ถ้ายังไม่มี API จริง ใช้เป็น array ว่างไปก่อน
+  const notifications = [];
+
+  // จำนวนที่ยังไม่อ่าน
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  // กดเพื่อ mark as read
+  function onMarkRead(id) {
+    console.log("mark as read:", id);
+  }
 
   const role = user?.role || "guest";
 
@@ -29,17 +47,37 @@ export default function Layout() {
       items: [
         { path: "/customers", label: "ลูกค้า", roles: ["admin"] },
         { path: "/buildings", label: "อาคาร", roles: ["admin"] },
-        { path: "/elevators", label: "ลิฟต์", roles: ["admin", "technician", "customer"] },
+        {
+          path: "/elevators",
+          label: "ลิฟต์",
+          roles: ["admin", "technician", "customer"],
+        },
         { path: "/technicians", label: "ช่าง", roles: ["admin"] },
       ],
     },
     {
       label: "งานซ่อมบำรุง (Maintenance)",
       items: [
-        { path: "/maintenance/jobs", label: "ใบงานบำรุงรักษา", roles: ["admin", "technician"] },
-        { path: "/maintenance/plans", label: "แผนบำรุงรักษา", roles: ["admin", "technician"] },
-        { path: "/maintenance/templates", label: "เทมเพลตงานบำรุงรักษา", roles: ["admin", "technician"] },
-        { path: "/parts", label: "อะไหล่ (Parts)", roles: ["admin", "technician"] },
+        {
+          path: "/maintenance/jobs",
+          label: "ใบงานบำรุงรักษา",
+          roles: ["admin", "technician"],
+        },
+        {
+          path: "/maintenance/plans",
+          label: "แผนบำรุงรักษา",
+          roles: ["admin", "technician"],
+        },
+        {
+          path: "/maintenance/templates",
+          label: "เทมเพลตงานบำรุงรักษา",
+          roles: ["admin", "technician"],
+        },
+        {
+          path: "/parts",
+          label: "อะไหล่ (Parts)",
+          roles: ["admin", "technician"],
+        },
       ],
     },
     {
@@ -128,9 +166,29 @@ export default function Layout() {
           <div className="app-header-title">
             ยินดีต้อนรับ, {user?.name || "ผู้ใช้"} ({user?.role || "guest"})
           </div>
-          <button className="button secondary" onClick={logout}>
-            ออกจากระบบ
-          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {/* 🔔 ไอคอนระฆัง */}
+            <div style={{ position: "relative" }}>
+              <NotificationBell
+                unreadCount={unreadCount}
+                onClick={() => setOpenNoti(!openNoti)}
+              />
+
+              {openNoti && (
+                <NotificationDropdown
+                  notifications={notifications}
+                  onMarkRead={onMarkRead}
+                  onClose={() => setOpenNoti(false)}
+                />
+              )}
+            </div>
+
+            {/* ปุ่มออกจากระบบ */}
+            <button className="button secondary" onClick={logout}>
+              ออกจากระบบ
+            </button>
+          </div>
         </header>
 
         <main className="app-content">

@@ -1,89 +1,144 @@
 // src/components/NotificationDropdown.jsx
+import { useEffect, useRef } from "react";
+
 export default function NotificationDropdown({
-  notifications,
-  onMarkRead,
-  onClose,
+  notifications = [],
+  onMarkRead = () => {},
+  onClose = () => {},
 }) {
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
   return (
-    <div style={styles.dropdown}>
+    <div ref={dropdownRef} style={styles.container}>
+
+      {/* Header */}
       <div style={styles.header}>
-        <span>การแจ้งเตือน</span>
-        <button style={styles.closeBtn} onClick={onClose}>✕</button>
+        <span style={styles.headerTitle}>การแจ้งเตือน</span>
       </div>
 
+      <div style={styles.divider} />
+
+      {/* รายการแจ้งเตือน */}
       <div style={styles.list}>
-        {notifications.length === 0 ? (
-          <p style={styles.empty}>ยังไม่มีการแจ้งเตือน</p>
-        ) : (
-          notifications.map((n) => (
-            <div key={n.id} style={styles.item}>
-              <div style={{ flex: 1 }}>
-                <strong style={{ opacity: n.is_read ? 0.6 : 1 }}>
-                  {n.title}
-                </strong>
-                <p style={styles.text}>{n.body}</p>
-              </div>
-
-              {!n.is_read && (
-                <button
-                  style={styles.readBtn}
-                  onClick={() => onMarkRead(n.id)}
-                >
-                  ทำเป็นอ่านแล้ว
-                </button>
-              )}
-            </div>
-          ))
+        {notifications.length === 0 && (
+          <div style={styles.empty}>ไม่มีการแจ้งเตือน</div>
         )}
+
+        {notifications.map((n) => (
+          <div key={n.id} style={styles.itemRow}>
+            <span style={styles.message}>{n.body || n.title}</span>
+          </div>
+        ))}
       </div>
+
+      {/* ⬇ Footer — ปุ่มอยู่ล่างสุด */}
+      {notifications.some(n => !n.is_read) && (
+        <div style={styles.footer}>
+          <button
+            style={styles.footerBtn}
+            onClick={() => {
+              notifications.forEach(n => {
+                if (!n.is_read) onMarkRead(n.id);
+              });
+            }}
+          >
+            ทำเป็นอ่านแล้วทั้งหมด
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }
 
 const styles = {
-  dropdown: {
+  container: {
     position: "absolute",
-    top: 50,
-    right: 10,
-    width: 320,
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 2px 10px rgba(0,0,0,.15)",
-    padding: 10,
-    zIndex: 1000,
+    top: 40,
+    right: 0,
+    width: 380,
+    minHeight: 250,
+    maxHeight: 480,
+    display: "flex",
+    flexDirection: "column",          // ★ ดัน footer ลงล่าง
+    background: "#ffffff",
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,0.10)",
+    boxShadow: "0 18px 45px rgba(15,23,42,0.35)",
+    padding: "16px 18px 20px",
+    zIndex: 999,
   },
+
   header: {
     display: "flex",
+    alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 8,
+  },
+
+  headerTitle: {
+    fontSize: 15,
     fontWeight: 600,
-    paddingBottom: 8,
-    borderBottom: "1px solid #e5e7eb",
+    color: "#111827",
   },
-  closeBtn: {
-    background: "transparent",
-    border: "none",
-    fontSize: 16,
-    cursor: "pointer",
-  },
-  list: {
-    maxHeight: 250,
-    overflowY: "auto",
-    paddingTop: 8,
-  },
-  empty: { color: "#6b7280", fontSize: 13, textAlign: "center" },
-  item: {
-    display: "flex",
-    gap: 10,
-    padding: "8px 0",
-    borderBottom: "1px solid #f0f0f0",
-  },
-  text: { margin: 0, fontSize: 12, color: "#6b7280" },
-  readBtn: {
+
+  divider: {
+    height: 1,
     background: "#e5e7eb",
-    border: "none",
-    borderRadius: 6,
-    padding: "4px 6px",
-    fontSize: 11,
+    marginBottom: 12,
+  },
+
+  list: {
+    flex: 1,                            // ★ ให้พื้นที่ส่วนนี้ยืดเต็ม
+    overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+
+  empty: {
+    fontSize: 13,
+    color: "#9ca3af",
+    padding: "8px 4px",
+  },
+
+  itemRow: {
+    padding: "10px 8px",
+    borderRadius: 10,
+    background: "#f9fafb",
+  },
+
+  message: {
+    fontSize: 14,
+    color: "#111827",
+    lineHeight: 1.4,
+  },
+
+  // ★ Footer อยู่ล่างสุดแน่นอน
+  footer: {
+    marginTop: "12px",
+    paddingTop: "12px",
+    borderTop: "1px solid #e5e7eb",
+    display: "flex",
+    justifyContent: "flex-end",
+  },
+
+  footerBtn: {
+    fontSize: 14,
+    padding: "8px 14px",
+    borderRadius: 8,
+    background: "#e5e7eb",
+    border: "1px solid #d1d5db",
     cursor: "pointer",
   },
 };

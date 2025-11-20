@@ -10,7 +10,7 @@ export default function NotificationBell({ unreadCount, onClick }) {
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={1.8}
-        stroke="currentColor"
+        stroke="#ffffff" // ← เปลี่ยนเป็นสีขาว
         style={styles.bell}
       >
         <path
@@ -21,9 +21,7 @@ export default function NotificationBell({ unreadCount, onClick }) {
       </svg>
 
       {/* Badge */}
-      {unreadCount > 0 && (
-        <span style={styles.badge}>{unreadCount}</span>
-      )}
+      {unreadCount > 0 && <span style={styles.badge}>{unreadCount}</span>}
     </div>
   );
 }
@@ -32,12 +30,15 @@ const styles = {
   wrap: {
     position: "relative",
     cursor: "pointer",
-    padding: 8,
+    padding: 8, // ลด padding
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   bell: {
     width: 24,
     height: 24,
-    color: "#374151",
+    color: "#ffffff", // ← เปลี่ยนเป็นสีขาว
   },
   badge: {
     position: "absolute",
