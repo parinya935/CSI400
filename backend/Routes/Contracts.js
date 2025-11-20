@@ -5,6 +5,27 @@ import authRequired, { roleRequired } from "../Auth/middle.js";
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/contracts:
+ *   get:
+ *     summary: Get contracts
+ *     description: Retrieve contracts (Admin gets all, Customer gets own)
+ *     tags: [Contracts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of contracts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Contract'
+ *       500:
+ *         description: Internal server error
+ */
 // สัญญา
 router.get("/contracts", authRequired, async (req, res) => {
   const { role, customer_id } = req.user || {};
@@ -28,6 +49,62 @@ router.get("/contracts", authRequired, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/contracts:
+ *   post:
+ *     summary: Create a new contract
+ *     description: Create a new contract (Admin only)
+ *     tags: [Contracts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customer_id
+ *               - contract_code
+ *               - contract_type
+ *               - start_date
+ *               - end_date
+ *             properties:
+ *               customer_id:
+ *                 type: integer
+ *               contract_code:
+ *                 type: string
+ *                 example: "C-001"
+ *               contract_type:
+ *                 type: string
+ *                 example: "Standard"
+ *               start_date:
+ *                 type: string
+ *                 format: date
+ *               end_date:
+ *                 type: string
+ *                 format: date
+ *               maintenance_times_per_year:
+ *                 type: integer
+ *               included_items:
+ *                 type: string
+ *               excluded_items:
+ *                 type: string
+ *               notify_before_days:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Contract created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Contract'
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Internal server error
+ */
 // สร้างสัญญา
 router.post("/contracts", authRequired, roleRequired("admin"), async (req, res) => {
 	const { customer_id, contract_code, contract_type, start_date, end_date, maintenance_times_per_year, included_items, excluded_items, notify_before_days } = req.body || {};
@@ -45,6 +122,66 @@ router.post("/contracts", authRequired, roleRequired("admin"), async (req, res) 
 	}
 });
 
+/**
+ * @swagger
+ * /api/contracts/{id}:
+ *   put:
+ *     summary: Update a contract
+ *     description: Update contract information (Admin only)
+ *     tags: [Contracts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customer_id
+ *               - contract_code
+ *               - contract_type
+ *               - start_date
+ *               - end_date
+ *             properties:
+ *               customer_id:
+ *                 type: integer
+ *               contract_code:
+ *                 type: string
+ *               contract_type:
+ *                 type: string
+ *               start_date:
+ *                 type: string
+ *                 format: date
+ *               end_date:
+ *                 type: string
+ *                 format: date
+ *               maintenance_times_per_year:
+ *                 type: integer
+ *               included_items:
+ *                 type: string
+ *               excluded_items:
+ *                 type: string
+ *               notify_before_days:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Contract updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Contract'
+ *       404:
+ *         description: Contract not found
+ *       500:
+ *         description: Internal server error
+ */
 // แก้ไขสัญญา
 router.put("/contracts/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
@@ -107,6 +244,29 @@ router.put("/contracts/:id", authRequired, roleRequired("admin"), async (req, re
   }
 });
 
+/**
+ * @swagger
+ * /api/contracts/{id}:
+ *   delete:
+ *     summary: Delete a contract
+ *     description: Delete a contract (Admin only)
+ *     tags: [Contracts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Contract deleted successfully
+ *       404:
+ *         description: Contract not found
+ *       500:
+ *         description: Internal server error
+ */
 // ลบสัญญา
 router.delete("/contracts/:id", authRequired, roleRequired("admin"), async (req, res) => {
   const { id } = req.params;
@@ -127,6 +287,44 @@ router.delete("/contracts/:id", authRequired, roleRequired("admin"), async (req,
   }
 });
 
+/**
+ * @swagger
+ * /api/quotations:
+ *   get:
+ *     summary: Get quotations
+ *     description: Retrieve quotations (Admin gets all, Customer gets own)
+ *     tags: [Quotations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of quotations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   quotation_code:
+ *                     type: string
+ *                   customer_id:
+ *                     type: integer
+ *                   ticket_id:
+ *                     type: integer
+ *                   contract_id:
+ *                     type: integer
+ *                   status:
+ *                     type: string
+ *                   total_amount:
+ *                     type: number
+ *                   customer_name:
+ *                     type: string
+ *       500:
+ *         description: Internal server error
+ */
 // ดึงใบเสนอราคา (Admin = ทั้งหมด, Customer = ของตัวเอง)
 router.get("/quotations", authRequired, async (req, res) => {
   const { role, customer_id } = req.user || {};

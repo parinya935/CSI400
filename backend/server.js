@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import swaggerUi from "swagger-ui-express";
+import specs from "./swagger.js";
 import Routes from "./Auth/Auth.js";
 import main from "./Routes/Core.js";
 import contract from "./Routes/Contracts.js";
@@ -34,6 +36,9 @@ app.use(
 
 // ---- API (Protected) ----
 app.get("/", (req, res) => res.send("🚀 LiftCare API is running..."));
+
+// ---- Swagger Documentation ----
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, { swaggerOptions: { persistAuthorization: true } }));
 
 // ---- Start ----
 app.use('/auth', Routes);

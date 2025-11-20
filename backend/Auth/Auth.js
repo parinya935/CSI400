@@ -111,11 +111,13 @@ Routes.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // ✅ ถ้า role เป็น customer ให้ดึง customer_id
-    let customer_id = null;
-    if (user.role === 'customer') {
+    // ✅ จัดการ customer_id ให้ถูกต้อง
+    let customer_id = userRow.customer_id || null;
+
+    // ถ้าใน users.customer_id ยังว่าง แต่ role = customer → ไปหาในตาราง customers เพิ่ม
+    if (!customer_id && userRow.role === "customer") {
       const [customers] = await pool.query(
-        'SELECT id FROM customers WHERE contact_email = ? LIMIT 1',
+        "SELECT id FROM customers WHERE contact_email = ? LIMIT 1",
         [email]
       );
       if (customers.length > 0) {
@@ -123,14 +125,14 @@ Routes.post("/login", async (req, res) => {
       }
     }
 
+    // ✅ ใช้ userRow แทน users
     const tokenPayload = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
+      id: userRow.id,
+      email: userRow.email,
+      name: userRow.name,
+      role: userRow.role,
     };
-    
-    // ✅ เพิ่ม customer_id ใน token ถ้ามี
+
     if (customer_id) {
       tokenPayload.customer_id = customer_id;
     }
@@ -138,20 +140,19 @@ Routes.post("/login", async (req, res) => {
     const token = signAccessToken(tokenPayload);
 
     const responseUser = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
+      id: userRow.id,
+      email: userRow.email,
+      name: userRow.name,
+      role: userRow.role,
     };
 
-    // ✅ เพิ่ม customer_id ในการตอบกลับ
     if (customer_id) {
       responseUser.customer_id = customer_id;
     }
 
     return res.json({
       user: responseUser,
-      token
+      token,
     });
   } catch (error) {
     console.error("Login error:", error);
