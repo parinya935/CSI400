@@ -207,15 +207,16 @@ export default function PartsInventory() {
         {loading && <div className="card">Loading...</div>}
         {error && <div className="card error">{error}</div>}
 
-        {/* ส่วนจัดการอะไหล่ (ฟอร์ม) */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">
-              {editingPartId ? "Edit Part" : "New Part"}
+        {/* ส่วนจัดการอะไหล่ (ฟอร์ม) - เฉพาะ admin */}
+        {userRole === "admin" && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                {editingPartId ? "Edit Part" : "New Part"}
+              </div>
             </div>
-          </div>
 
-          <form onSubmit={handlePartSubmit}>
+            <form onSubmit={handlePartSubmit}>
             <div className="form-row">
               <div>
                 <label>
@@ -275,7 +276,7 @@ export default function PartsInventory() {
                     value={partForm.unit}
                     onChange={handlePartChange}
                     className="input"
-                    placeholder="เช่น pcs, set, ea"
+                    placeholder="เช่น pcs, set"
                   />
                 </label>
               </div>
@@ -331,7 +332,8 @@ export default function PartsInventory() {
               )}
             </div>
           </form>
-        </div>
+          </div>
+        )}
 
         {/* ตารางรายการอะไหล่ */}
         <div className="card">
@@ -351,7 +353,7 @@ export default function PartsInventory() {
                 <th>Sell</th>
                 <th>Stock Qty</th>
                 <th>Min</th>
-                <th style={{ width: 130 }} />
+                {userRole === "admin" && <th style={{ width: 130 }} />}
               </tr>
             </thead>
             <tbody>
@@ -372,22 +374,24 @@ export default function PartsInventory() {
                       {low && " (Low)"}
                     </td>
                     <td>{p.min_stock ?? "-"}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="button sm secondary"
-                        onClick={() => handlePartEdit(p)}
-                      >
-                        Edit
-                      </button>{" "}
-                      <button
-                        type="button"
-                        className="button sm danger"
-                        onClick={() => handlePartDelete(p.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    {userRole === "admin" && (
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          type="button"
+                          className="button sm secondary"
+                          onClick={() => handlePartEdit(p)}
+                        >
+                          Edit
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="button sm danger"
+                          onClick={() => handlePartDelete(p.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

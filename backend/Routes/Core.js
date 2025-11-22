@@ -882,10 +882,16 @@ router.get(
         t.phone,
         t.specialty,
         t.notes,
+        tr.address,
+        tr.date_of_birth,
+        tr.age,
+        tr.experience,
+        tr.education,
         t.created_at,
         t.updated_at
       FROM technicians t
       LEFT JOIN users u ON t.user_id = u.id
+      LEFT JOIN technician_requests tr ON t.user_id = tr.user_id AND tr.status = 'approved'
       ORDER BY t.id DESC
     `);
       res.json(rows);
@@ -1036,6 +1042,211 @@ router.delete(
       res.json({ message: "Technician deleted" });
     } catch (error) {
       console.error("Delete technician error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
+// ============== Technician Requests (สมัครเป็นช่าง) ==============
+
+// GET /api/technician-requests (Admin: ดูคำขอการสมัครทั้งหมด)
+router.get(
+  "/technician-requests",
+  authRequired,
+  roleRequired("admin"),
+  async (req, res) => {
+    try {
+      const [rows] = await pool.query(`
+        SELECT
+          tr.id,
+          tr.user_id,
+          u.name,
+          u.email,
+          tr.phone,
+          tr.specialty,
+          tr.address,
+          tr.date_of_birth,
+          tr.age,
+          tr.experience,
+          tr.education,
+          tr.notes,
+          tr.status,
+          tr.created_at,
+          tr.updated_at
+        FROM technician_requests tr
+        LEFT JOIN users u ON tr.user_id = u.id
+        ORDER BY tr.created_at DESC
+      `);
+      res.json(rows);
+    } catch (error) {
+      console.error("Fetch technician requests error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
+// POST /api/technician-requests (Technician: ส่งคำขอการสมัคร)
+router.post(
+  "/technician-requests",
+  authRequired,
+  roleRequired("technician"),
+  async (req, res) => {
+    const {
+      phone,
+      specialty,
+      address,
+      date_of_birth,
+      age,
+      experience,
+      education,
+      notes,
+    } = req.body || {};
+
+    const user_id = req.user.id;
+
+    // ตรวจสอบข้อมูลจำเป็น
+    if (!phone || !specialty || !address || !date_of_birth || !experience || !education) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    try {
+      // เช็กว่า user ไม่มีคำขอที่ยังค้างอยู่ (pending)
+      const [existingRequests] = await pool.query(
+        `SELECT id FROM technician_requests WHERE user_id = ? AND status = 'pending'`,
+        [user_id]
+      );
+
+      if (existingRequests.length > 0) {
+        return res.status(409).json({ 
+          message: "You already have a pending request. Please wait for admin approval." 
+        });
+      }
+
+      const [result] = await pool.query(
+        `
+        INSERT INTO technician_requests 
+        (user_id, phone, specialty, address, date_of_birth, age, experience, education, notes, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        `,
+        [user_id, phone, specialty, address, date_of_birth, age, experience, education, notes || null]
+      );
+
+      const [rows] = await pool.query(
+        `
+        SELECT
+          tr.id,
+          tr.user_id,
+          u.name,
+          u.email,
+          tr.phone,
+          tr.specialty,
+          tr.address,
+          tr.date_of_birth,
+          tr.age,
+          tr.experience,
+          tr.education,
+          tr.notes,
+          tr.status,
+          tr.created_at,
+          tr.updated_at
+        FROM technician_requests tr
+        LEFT JOIN users u ON tr.user_id = u.id
+        WHERE tr.id = ?
+        `,
+        [result.insertId]
+      );
+
+      res.status(201).json(rows[0]);
+    } catch (error) {
+      console.error("Create technician request error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
+// PUT /api/technician-requests/:id (Admin: อนุมัติหรือปฏิเสธคำขอ)
+router.put(
+  "/technician-requests/:id",
+  authRequired,
+  roleRequired("admin"),
+  async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body || {};
+
+    if (!status || !["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ 
+        message: "Status must be 'approved' or 'rejected'" 
+      });
+    }
+
+    try {
+      // ดึงข้อมูล request ก่อน
+      const [requests] = await pool.query(
+        `SELECT * FROM technician_requests WHERE id = ?`,
+        [id]
+      );
+
+      if (requests.length === 0) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+
+      const request = requests[0];
+
+      // ถ้า approve → สร้าง technician record
+      if (status === "approved") {
+        // เช็กว่า user นี้มี technician record แล้วหรือไม่
+        const [existingTechs] = await pool.query(
+          `SELECT id FROM technicians WHERE user_id = ?`,
+          [request.user_id]
+        );
+
+        if (existingTechs.length === 0) {
+          // สร้าง technician record ใหม่จากข้อมูล request
+          await pool.query(
+            `
+            INSERT INTO technicians (user_id, phone, specialty, notes)
+            VALUES (?, ?, ?, ?)
+            `,
+            [request.user_id, request.phone, request.specialty, request.notes || null]
+          );
+        }
+      }
+
+      // อัปเดต status
+      await pool.query(
+        `UPDATE technician_requests SET status = ?, updated_at = NOW() WHERE id = ?`,
+        [status, id]
+      );
+
+      // ดึงข้อมูล request ที่อัปเดตแล้ว
+      const [updatedRequests] = await pool.query(
+        `
+        SELECT
+          tr.id,
+          tr.user_id,
+          u.name,
+          u.email,
+          tr.phone,
+          tr.specialty,
+          tr.address,
+          tr.date_of_birth,
+          tr.age,
+          tr.experience,
+          tr.education,
+          tr.notes,
+          tr.status,
+          tr.created_at,
+          tr.updated_at
+        FROM technician_requests tr
+        LEFT JOIN users u ON tr.user_id = u.id
+        WHERE tr.id = ?
+        `,
+        [id]
+      );
+
+      res.json(updatedRequests[0]);
+    } catch (error) {
+      console.error("Update technician request error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

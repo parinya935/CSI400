@@ -29,30 +29,42 @@ export default function Technicians() {
   const { user } = useAuth();
   const [technicians, setTechnicians] = useState([]);
   const [users, setUsers] = useState([]);
+  const [technicianRequests, setTechnicianRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [requestForm, setRequestForm] = useState(emptyRequestForm);
   const [editingId, setEditingId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false);
+  const [viewingRequestId, setViewingRequestId] = useState(null);
+  const [isConfirmApproveOpen, setIsConfirmApproveOpen] = useState(false);
+  const [confirmApproveRequestId, setConfirmApproveRequestId] = useState(null);
+  const [isConfirmRejectOpen, setIsConfirmRejectOpen] = useState(false);
+  const [confirmRejectRequestId, setConfirmRejectRequestId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function loadData() {
     try {
       setLoading(true);
       setError("");
-      // สำหรับ admin เท่านั้นที่ต้องโหลดข้อมูลช่างและ users
+      
+      // ทั้ง admin และ technician ต้องโหลดข้อมูลช่างเพื่อตรวจสอบสถานะ
+      const ts = await api.get("/api/technicians");
+      setTechnicians(ts || []);
+      
+      // เฉพาะ admin ที่โหลด users และ requests
       if (userRole === "admin") {
-        const [ts, us] = await Promise.all([
-          api.get("/api/technicians"),
+        const [us, tr] = await Promise.all([
           api.get("/api/technician-users"),
+          api.get("/api/technician-requests"),
         ]);
-        setTechnicians(ts || []);
         setUsers(us || []);
+        setTechnicianRequests(tr || []);
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to load technicians");
+      setError(err.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -99,16 +111,18 @@ export default function Technicians() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      // TODO: ส่ง request ไปยัง backend (จะทำทีหลัง)
       const payload = {
-        user_id: user.id,
-        user_name: user.name,
-        user_email: user.email,
-        ...requestForm,
+        phone: requestForm.phone,
+        specialty: requestForm.specialty,
+        address: requestForm.address,
+        date_of_birth: requestForm.date_of_birth,
+        age: requestForm.age,
+        experience: requestForm.experience,
+        education: requestForm.education,
+        notes: requestForm.notes,
       };
       
-      // สำหรับตอนนี้แค่แสดง alert
-      console.log("Technician Request:", payload);
+      await api.post("/api/technician-requests", payload);
       alert("ส่งคำขอสมัครเป็นช่างเรียบร้อยแล้ว รอการอนุมัติจากผู้ดูแลระบบ");
       
       setRequestForm(emptyRequestForm);
@@ -190,8 +204,95 @@ export default function Technicians() {
     return `${u.name} (${u.email})`;
   }
 
-  // สำหรับ technician: แสดงฟอร์มขอสมัคร
+  function handleOpenConfirmApprove(requestId) {
+    setConfirmApproveRequestId(requestId);
+    setIsConfirmApproveOpen(true);
+  }
+
+  function handleCloseConfirmApprove() {
+    setIsConfirmApproveOpen(false);
+    setConfirmApproveRequestId(null);
+  }
+
+  async function handleConfirmApprove() {
+    if (!confirmApproveRequestId) return;
+    
+    try {
+      await api.put(`/api/technician-requests/${confirmApproveRequestId}`, { status: "approved" });
+      alert("ได้ทำการอนุมัติคำขอสมัคร และสร้างบันทึกช่างใหม่เรียบร้อยแล้ว");
+      handleCloseConfirmApprove();
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Error approving request");
+    }
+  }
+
+  function handleOpenConfirmReject(requestId) {
+    setConfirmRejectRequestId(requestId);
+    setIsConfirmRejectOpen(true);
+  }
+
+  function handleCloseConfirmReject() {
+    setIsConfirmRejectOpen(false);
+    setConfirmRejectRequestId(null);
+  }
+
+  async function handleConfirmReject() {
+    if (!confirmRejectRequestId) return;
+    
+    try {
+      await api.put(`/api/technician-requests/${confirmRejectRequestId}`, { status: "rejected" });
+      alert("ได้ทำการปฏิเสธคำขอสมัครเรียบร้อยแล้ว");
+      handleCloseConfirmReject();
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Error rejecting request");
+    }
+  }
+
+  function handleViewRequest(requestId) {
+    setViewingRequestId(requestId);
+    setIsViewDetailsOpen(true);
+  }
+
+  function handleCloseViewDetails() {
+    setIsViewDetailsOpen(false);
+    setViewingRequestId(null);
+  }
+
+  // สำหรับ technician: แสดงฟอร์มขอสมัครหรือหน้า approved ตามสถานะ
   if (userRole === "technician") {
+    // ตรวจสอบว่าช่างคนนี้มีข้อมูลใน Approved Technician List หรือไม่
+    const isApproved = technicians.some(t => t.user_id === user?.id);
+
+    if (isApproved) {
+      // ถ้าได้อนุมัติแล้ว ให้ redirect ไปหน้า main หรือแสดงข้อความแล้วจบ
+      return (
+        <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
+          <div>
+            <div className="app-page-header">
+              <h2 className="app-page-title">Technician Portal</h2>
+              <p className="app-page-subtitle">
+                ยินดีต้อนรับสู่ระบบช่าง คุณสามารถเข้าใช้งานเมนูต่าง ๆ ได้เรียบร้อยแล้ว
+              </p>
+            </div>
+
+            <div className="card" style={{ backgroundColor: "#d1fae5", borderColor: "#10b981", borderWidth: "2px", padding: "20px", borderRadius: "8px" }}>
+              <div style={{ color: "#065f46", fontSize: "16px" }}>
+                <strong>✓ หมายเหตุ:</strong>
+                <p style={{ marginTop: "8px", color: "#047857", lineHeight: "1.6" }}>
+                  บัญชีของคุณได้รับการอนุมัติเรียบร้อยแล้ว และไม่สามารถเข้าหน้านี้ได้อีก กรุณาไปที่เมนู Maintenance, Parts หรือ Technician Portal เพื่อใช้งาน
+                </p>
+              </div>
+            </div>
+          </div>
+        </ProtectedPage>
+      );
+    }
+
+    // ถ้ายังไม่ได้อนุมัติ แสดงฟอร์มขอสมัคร
     return (
       <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
         <div>
@@ -381,15 +482,70 @@ export default function Technicians() {
 
         {error && <div className="card error">{error}</div>}
 
-        {/* ปุ่มเพิ่มช่างใหม่ */}
-        <div style={{ marginBottom: 16 }}>
-          <button
-            type="button"
-            className="button primary"
-            onClick={handleOpenForm}
-          >
-            + Add New Technician
-          </button>
+        {/* Pending Technician Requests */}
+        <div className="card" style={{ marginBottom: 32 }}>
+          <div className="card-header">
+            <div className="card-title">Pending Technician Requests</div>
+          </div>
+
+          {loading ? (
+            <div>Loading...</div>
+          ) : technicianRequests.filter(r => r.status === 'pending').length > 0 ? (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Applicant Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Specialty</th>
+                  <th>Experience</th>
+                  <th style={{ width: 300 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {technicianRequests
+                  .filter(r => r.status === 'pending')
+                  .map((req) => (
+                    <tr key={req.id}>
+                      <td>{req.name || "-"}</td>
+                      <td>{req.email || "-"}</td>
+                      <td>{req.phone || "-"}</td>
+                      <td>{req.specialty || "-"}</td>
+                      <td>{req.experience || "-"} years</td>
+                      <td style={{ textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "center", flexWrap: "nowrap" }}>
+                          <button
+                            className="button sm secondary"
+                            type="button"
+                            onClick={() => handleViewRequest(req.id)}
+                          >
+                            View Details
+                          </button>
+                          <button
+                            className="button sm primary"
+                            type="button"
+                            onClick={() => handleOpenConfirmApprove(req.id)}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            className="button sm danger"
+                            type="button"
+                            onClick={() => handleOpenConfirmReject(req.id)}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "#6b7280" }}>
+              No pending requests
+            </div>
+          )}
         </div>
 
         {/* ฟอร์มในโมดัล */}
@@ -469,9 +625,146 @@ export default function Technicians() {
           </form>
         </FormModal>
 
+        {/* Modal View Details */}
+        <FormModal
+          isOpen={isViewDetailsOpen}
+          title="Applicant Details"
+          onClose={handleCloseViewDetails}
+        >
+          {viewingRequestId && technicianRequests.find(r => r.id === viewingRequestId) ? (
+            <div style={{ lineHeight: 1.8 }}>
+              {(() => {
+                const req = technicianRequests.find(r => r.id === viewingRequestId);
+                return (
+                  <>
+                    <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #e5e7eb" }}>
+                      <div style={{ fontWeight: 600, color: "#111827" }}>ข้อมูลผู้สมัคร</div>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>ชื่อ:</span> {req.name || "-"}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>อีเมล:</span> {req.email || "-"}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>เบอรโทร:</span> {req.phone || "-"}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>ความเชี่ยวชาญ:</span> {req.specialty || "-"}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>ที่อยู่:</span> {req.address || "-"}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>วันเกิด:</span> {req.date_of_birth ? new Date(req.date_of_birth).toLocaleDateString("th-TH") : "-"}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>อายุ:</span> {req.age || "-"} ปี
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>ประสบการณ์:</span> {req.experience || "-"} ปี
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>วุฒิการศึกษา:</span> {req.education || "-"}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontWeight: 500, color: "#6b7280" }}>หมายเหตุ:</span> {req.notes || "-"}
+                    </div>
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e5e7eb", color: "#9ca3af", fontSize: 12 }}>
+                      ส่งคำขอเมื่อ: {new Date(req.created_at).toLocaleString("th-TH")}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          ) : null}
+        </FormModal>
+
+        {/* Modal Confirm Approve */}
+        <FormModal
+          isOpen={isConfirmApproveOpen}
+          title="ยืนยันการอนุมัติ"
+          onClose={handleCloseConfirmApprove}
+        >
+          {confirmApproveRequestId && technicianRequests.find(r => r.id === confirmApproveRequestId) ? (
+            <div>
+              {(() => {
+                const req = technicianRequests.find(r => r.id === confirmApproveRequestId);
+                return (
+                  <>
+                    <div style={{ marginBottom: 16, color: "#374151" }}>
+                      <p>คุณต้องการอนุมัติคำขอสมัครของ <strong>{req.name}</strong> ใช่หรือไม่?</p>
+                      <p style={{ fontSize: 14, color: "#6b7280", marginTop: 8 }}>
+                        ระบบจะสร้างบันทึกช่างใหม่พร้อมข้อมูลที่ส่งมา
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={handleCloseConfirmApprove}
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        type="button"
+                        className="button primary"
+                        onClick={handleConfirmApprove}
+                      >
+                        ยืนยัน
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          ) : null}
+        </FormModal>
+
+        {/* Modal Confirm Reject */}
+        <FormModal
+          isOpen={isConfirmRejectOpen}
+          title="ยืนยันการปฏิเสธ"
+          onClose={handleCloseConfirmReject}
+        >
+          {confirmRejectRequestId && technicianRequests.find(r => r.id === confirmRejectRequestId) ? (
+            <div>
+              {(() => {
+                const req = technicianRequests.find(r => r.id === confirmRejectRequestId);
+                return (
+                  <>
+                    <div style={{ marginBottom: 16, color: "#374151" }}>
+                      <p>คุณต้องการปฏิเสธคำขอสมัครของ <strong>{req.name}</strong> ใช่หรือไม่?</p>
+                      <p style={{ fontSize: 14, color: "#6b7280", marginTop: 8 }}>
+                        
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={handleCloseConfirmReject}
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        type="button"
+                        className="button danger"
+                        onClick={handleConfirmReject}
+                      >
+                        ยืนยันการปฏิเสธ
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          ) : null}
+        </FormModal>
+
         {/* ตาราง */}
         <div className="card">
-          <div className="card-title">Technician List</div>
+          <div className="card-title">Approved Technician List</div>
 
           {loading ? (
             <div>Loading...</div>
@@ -482,6 +775,8 @@ export default function Technicians() {
                   <th>User</th>
                   <th>Phone</th>
                   <th>Specialty</th>
+                  <th>Experience</th>
+                  <th>Education</th>
                   <th style={{ width: 140 }} />
                 </tr>
               </thead>
@@ -491,6 +786,8 @@ export default function Technicians() {
                     <td>{renderUserName(t.user_id)}</td>
                     <td>{t.phone || "-"}</td>
                     <td>{t.specialty || "-"}</td>
+                    <td>{t.experience || "-"} ปี</td>
+                    <td>{t.education || "-"}</td>
                     <td style={{ textAlign: "right" }}>
                       <button
                         className="button sm secondary"
@@ -511,7 +808,7 @@ export default function Technicians() {
                 ))}
                 {technicians.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="text-center">
+                    <td colSpan={6} className="text-center">
                       No technicians.
                     </td>
                   </tr>

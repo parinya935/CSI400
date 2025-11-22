@@ -182,15 +182,16 @@ export default function MaintenanceJobs() {
 
         {error && <div className="card error">{error}</div>}
 
-        {/* ฟอร์มสร้าง / แก้ไขงาน */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">
-              {editingId ? "Edit Job" : "New Job"}
+        {/* ฟอร์มสร้าง / แก้ไขงาน - เฉพาะ admin */}
+        {userRole === "admin" && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                {editingId ? "Edit Job" : "New Job"}
+              </div>
             </div>
-          </div>
 
-          <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
             {/* Elevator / Type */}
             <div className="form-row">
               <div>
@@ -355,7 +356,8 @@ export default function MaintenanceJobs() {
               )}
             </div>
           </form>
-        </div>
+          </div>
+        )}
 
         {/* ตารางรายการงานบำรุง */}
         {loading && <div className="card">Loading jobs...</div>}
@@ -375,7 +377,7 @@ export default function MaintenanceJobs() {
                   <th>Contract</th>
                   <th>Total Cost</th>
                   <th>Created</th>
-                  <th style={{ width: 130 }}>Actions</th>
+                  {userRole === "admin" && <th style={{ width: 130 }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -396,22 +398,24 @@ export default function MaintenanceJobs() {
                         ? new Date(j.created_at).toLocaleDateString()
                         : "-"}
                     </td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="button sm secondary"
-                        onClick={() => handleEdit(j)}
-                      >
-                        Edit
-                      </button>{" "}
-                      <button
-                        type="button"
-                        className="button sm danger"
-                        onClick={() => handleDelete(j.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    {userRole === "admin" && (
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          type="button"
+                          className="button sm secondary"
+                          onClick={() => handleEdit(j)}
+                        >
+                          Edit
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="button sm danger"
+                          onClick={() => handleDelete(j.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {jobs.length === 0 && (

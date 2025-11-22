@@ -5,6 +5,7 @@ import NotificationBell from "./components/NotificationBell";
 import NotificationDropdown from "./components/NotificationDropdown";
 import { useState, useEffect } from "react";
 import { useApi } from "./api";
+import { useRoleCheck } from "./hooks/useRoleCheck";
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -78,6 +79,28 @@ export default function Layout() {
 
   const role = user?.role || "guest";
 
+  // โหลดข้อมูลช่างเพื่อตรวจสอบการอนุมัติ
+  const [technicians, setTechnicians] = useState([]);
+  const [isApprovedTechnician, setIsApprovedTechnician] = useState(false);
+
+  useEffect(() => {
+    if (role === "technician") {
+      loadTechnicianStatus();
+    }
+  }, [role, user?.id]);
+
+  async function loadTechnicianStatus() {
+    try {
+      const data = await api.get("/api/technicians");
+      setTechnicians(data || []);
+      // ตรวจสอบว่าช่างคนปัจจุบันมีข้อมูลอนุมัติแล้วหรือไม่
+      const isApproved = (data || []).some(t => t.user_id === user?.id);
+      setIsApprovedTechnician(isApproved);
+    } catch (err) {
+      console.error("โหลดสถานะช่างล้มเหลว:", err);
+    }
+  }
+
   const isActive = (path) =>
     location.pathname === path ||
     (path !== "/" && location.pathname.startsWith(path));
@@ -114,21 +137,25 @@ export default function Layout() {
           path: "/maintenance/jobs",
           label: "ใบงานบำรุงรักษา",
           roles: ["admin"],
+          technicianRoles: isApprovedTechnician,
         },
         {
           path: "/maintenance/plans",
           label: "แผนบำรุงรักษา",
           roles: ["admin"],
+          technicianRoles: isApprovedTechnician,
         },
         {
           path: "/maintenance/templates",
           label: "เทมเพลตงานบำรุงรักษา",
           roles: ["admin"],
+          technicianRoles: isApprovedTechnician,
         },
         {
           path: "/parts",
           label: "อะไหล่ (Parts)",
           roles: ["admin"],
+          technicianRoles: isApprovedTechnician,
         },
       ],
     },
@@ -148,6 +175,7 @@ export default function Layout() {
           path: "/technician-portal",
           label: "Technician Portal",
           roles: ["admin"],
+          technicianRoles: isApprovedTechnician,
         },
         {
           path: "/customer-portal",
@@ -177,7 +205,17 @@ export default function Layout() {
   const visibleSections = sections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => item.roles.includes(role)),
+      items: section.items.filter((item) => {
+        // สำหรับ admin, customer ใช้ roles ปกติ
+        if (role !== "technician") {
+          return item.roles.includes(role);
+        }
+        // สำหรับ technician ให้ใช้ technicianRoles (ถ้ามี) หรือ roles ปกติ
+        if (item.technicianRoles !== undefined) {
+          return item.technicianRoles;
+        }
+        return item.roles.includes(role);
+      }),
     }))
     .filter((section) => section.items.length > 0);
 

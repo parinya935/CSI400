@@ -152,15 +152,16 @@ export default function MaintenancePlans() {
           </p>
         </div>
 
-        {/* ฟอร์ม */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">
-              {editingId ? "Edit Plan" : "New Plan"}
+        {/* ฟอร์ม - เฉพาะ admin */}
+        {userRole === "admin" && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                {editingId ? "Edit Plan" : "New Plan"}
+              </div>
             </div>
-          </div>
 
-          <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
             {/* Elevator */}
             <label>
               Elevator *
@@ -278,7 +279,8 @@ export default function MaintenancePlans() {
               )}
             </div>
           </form>
-        </div>
+          </div>
+        )}
 
         {/* ตาราง */}
         <div className="card">
@@ -298,7 +300,7 @@ export default function MaintenancePlans() {
                   <th>Next maintenance</th>
                   <th>Last run</th>
                   <th>Active</th>
-                  <th style={{ width: 150 }}>Actions</th>
+                  {userRole === "admin" && <th style={{ width: 150 }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -326,22 +328,24 @@ export default function MaintenancePlans() {
                         : "-"}
                     </td>
                     <td>{p.is_active ? "Yes" : "No"}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="button sm secondary"
-                        onClick={() => handleEdit(p)}
-                      >
-                        Edit
-                      </button>{" "}
-                      <button
-                        type="button"
-                        className="button sm danger"
-                        onClick={() => handleDelete(p.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    {userRole === "admin" && (
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          type="button"
+                          className="button sm secondary"
+                          onClick={() => handleEdit(p)}
+                        >
+                          Edit
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="button sm danger"
+                          onClick={() => handleDelete(p.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {plans.length === 0 && (

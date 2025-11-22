@@ -100,13 +100,14 @@ export default function MaintenanceTemplates() {
           </p>
         </div>
 
-        {/* ฟอร์มสร้าง/แก้ไข */}
-        <div className="card">
-          <div className="card-title">
-            {editingId ? "Edit Template" : "New Template"}
-          </div>
+        {/* ฟอร์มสร้าง/แก้ไข - เฉพาะ admin */}
+        {userRole === "admin" && (
+          <div className="card">
+            <div className="card-title">
+              {editingId ? "Edit Template" : "New Template"}
+            </div>
 
-          <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
             <label>
               Template Name *
               <input
@@ -143,7 +144,8 @@ export default function MaintenanceTemplates() {
               )}
             </div>
           </form>
-        </div>
+          </div>
+        )}
 
         {/* ตารางรายการ Templates */}
         <div className="card">
@@ -159,7 +161,7 @@ export default function MaintenanceTemplates() {
                   <th>ID</th>
                   <th>Template Name</th>
                   <th>Description</th>
-                  <th style={{ width: 140 }}>Actions</th>
+                  {userRole === "admin" && <th style={{ width: 140 }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -168,22 +170,24 @@ export default function MaintenanceTemplates() {
                     <td>{t.id}</td>
                     <td>{t.name}</td>
                     <td>{t.description || "-"}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="button sm secondary"
-                        onClick={() => handleEdit(t)}
-                      >
-                        Edit
-                      </button>{" "}
-                      <button
-                        type="button"
-                        className="button sm danger"
-                        onClick={() => handleDelete(t.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    {userRole === "admin" && (
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          type="button"
+                          className="button sm secondary"
+                          onClick={() => handleEdit(t)}
+                        >
+                          Edit
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="button sm danger"
+                          onClick={() => handleDelete(t.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {templates.length === 0 && (
