@@ -47,22 +47,29 @@ export default function Buildings() {
     }
   }
 
-  // handleChange: กรณีเปลี่ยน customer จะ auto-fill building name จาก customer.name
+  // handleChange: กรณีเปลี่ยน customer จะ auto-fill building name, address, และ building_type จาก customer
   function handleChange(e) {
-  const { name, value } = e.target;
+    const { name, value } = e.target;
 
-  if (name === "customer_id") {
-    setForm((f) => {
-      const updated = { ...f, customer_id: value };
+    if (name === "customer_id") {
+      setForm((f) => {
+        const updated = { ...f, customer_id: value };
 
-      const customer = customers.find((x) => x.id === Number(value));
+        const customer = customers.find((x) => x.id === Number(value));
 
-      // เปลี่ยน Building Name ตาม customer ทุกครั้งที่มีการเปลี่ยน
+      // Auto-fill ข้อมูลจาก customer
       if (customer) {
+        // เปลี่ยน Building Name ตาม customer.name
         updated.name = customer.name || "";
+        // ดึง address จาก customer.address
+        updated.address = customer.address || "";
+        // ดึง building_type จาก customer.business_type (ใช้เป็นค่าเริ่มต้น)
+        updated.building_type = customer.business_type || "";
       } else if (!value) {
-        // ถ้าเลือกเป็นค่าว่าง กลับมาเคลียร์ชื่ออาคารด้วย (จะใส่หรือไม่ใส่บรรทัดนี้ก็ได้)
+        // ถ้าเลือกเป็นค่าว่าง กลับมาเคลียร์ข้อมูลทั้งหมด
         updated.name = "";
+        updated.address = "";
+        updated.building_type = "";
       }
 
       return updated;
@@ -276,7 +283,7 @@ export default function Buildings() {
                 <tr>
                   <th>ID</th>
                   <th>Customer</th>
-                  <th>Name</th>
+                  <th>Building Name</th>
                   <th>Address</th>
                   <th>Type</th>
                   <th style={{ width: 130 }}>Actions</th>

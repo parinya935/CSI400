@@ -102,9 +102,9 @@ export default function Layout() {
         {
           path: "/elevators",
           label: "ลิฟต์",
-          roles: ["admin", "technician", "customer"],
+          roles: ["admin", "customer"],
         },
-        { path: "/technicians", label: "ช่าง", roles: ["admin"] },
+        { path: "/technicians", label: "ช่าง", roles: ["admin", "technician"] },
       ],
     },
     {
@@ -113,22 +113,22 @@ export default function Layout() {
         {
           path: "/maintenance/jobs",
           label: "ใบงานบำรุงรักษา",
-          roles: ["admin", "technician"],
+          roles: ["admin"],
         },
         {
           path: "/maintenance/plans",
           label: "แผนบำรุงรักษา",
-          roles: ["admin", "technician"],
+          roles: ["admin"],
         },
         {
           path: "/maintenance/templates",
           label: "เทมเพลตงานบำรุงรักษา",
-          roles: ["admin", "technician"],
+          roles: ["admin"],
         },
         {
           path: "/parts",
           label: "อะไหล่ (Parts)",
-          roles: ["admin", "technician"],
+          roles: ["admin"],
         },
       ],
     },
@@ -147,7 +147,7 @@ export default function Layout() {
         {
           path: "/technician-portal",
           label: "Technician Portal",
-          roles: ["admin", "technician"],
+          roles: ["admin"],
         },
         {
           path: "/customer-portal",
@@ -162,12 +162,12 @@ export default function Layout() {
         {
           path: "/settings/account",
           label: "บัญชีผู้ใช้",
-          roles: ["admin", "technician", "customer"],
+          roles: ["admin", "customer"],
         },
         {
           path: "/settings/password",
           label: "เปลี่ยนรหัสผ่าน",
-          roles: ["admin", "technician", "customer"],
+          roles: ["admin", "customer"],
         },
       ],
     },

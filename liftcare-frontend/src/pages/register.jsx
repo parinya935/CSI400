@@ -8,6 +8,7 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("customer");
   const [msg, setMsg] = useState("");
   const api = useApi();
   const { login } = useAuth();
@@ -22,6 +23,7 @@ export default function Register() {
         name,
         email,
         password,
+        role,
       });
       // สมัครเสร็จ ล็อกอินให้เลย
       if (res.token && res.user) {
@@ -115,6 +117,44 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="อย่างน้อย 8 ตัวอักษร"
                 />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>ประเภทผู้ใช้งาน</label>
+                <div style={styles.roleContainer}>
+                  <label
+                    style={{
+                      ...styles.roleOption,
+                      ...(role === "customer" ? styles.roleOptionSelected : {}),
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value="customer"
+                      checked={role === "customer"}
+                      onChange={(e) => setRole(e.target.value)}
+                      style={styles.radio}
+                    />
+                    <span style={styles.roleLabel}>ลูกค้า (Customer)</span>
+                  </label>
+                  <label
+                    style={{
+                      ...styles.roleOption,
+                      ...(role === "technician" ? styles.roleOptionSelected : {}),
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value="technician"
+                      checked={role === "technician"}
+                      onChange={(e) => setRole(e.target.value)}
+                      style={styles.radio}
+                    />
+                    <span style={styles.roleLabel}>ช่าง (Technician)</span>
+                  </label>
+                </div>
               </div>
 
               <button type="submit" style={styles.btn}>
@@ -350,5 +390,37 @@ const styles = {
     color: "#003366",
     fontWeight: 600,
     textDecoration: "none",
+  },
+  roleContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    marginTop: 4,
+  },
+  roleOption: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    cursor: "pointer",
+    padding: "8px 12px",
+    borderRadius: 8,
+    border: "1px solid #d1d5db",
+    transition: "all 0.2s ease",
+    backgroundColor: "#ffffff",
+  },
+  roleOptionSelected: {
+    borderColor: "#003366",
+    backgroundColor: "#f0f7ff",
+  },
+  radio: {
+    cursor: "pointer",
+    width: 18,
+    height: 18,
+    accentColor: "#003366",
+  },
+  roleLabel: {
+    fontSize: 14,
+    color: "#374151",
+    userSelect: "none",
   },
 };

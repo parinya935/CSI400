@@ -39,13 +39,16 @@ function signAccessToken(payload) {
 // POST /auth/register  (ผ่าน server.js → app.use('/auth', Routes))
 // ---------------------------------------------------------------------------
 Routes.post("/register", async (req, res) => {
-  const { email, password, name, customerId } = req.body || {};
+  const { email, password, name, role, customerId } = req.body || {};
 
   if (!email || !password || !name) {
     return res
       .status(400)
       .json({ message: "email, password, name are required" });
   }
+
+  // ตรวจสอบ role ที่ถูกต้อง (customer หรือ technician)
+  const validRole = role === "technician" ? "technician" : "customer";
 
   try {
     // เช็กว่า email ซ้ำหรือยัง
@@ -58,17 +61,22 @@ Routes.post("/register", async (req, res) => {
 
     // hash password แล้วบันทึก
     const password_hash = await bcrypt.hash(password, 10);
+    
+    // สำหรับ technician ไม่ต้องมี customer_id (เป็น null)
+    // สำหรับ customer อาจจะมี customer_id หรือ null
+    const finalCustomerId = validRole === "technician" ? null : (customerId || null);
+    
     const [result] = await pool.query(
       "INSERT INTO users (email, password_hash, name, role, customer_id) VALUES (?, ?, ?, ?, ?)",
-      [email, password_hash, name, "customer", customerId || null]
+      [email, password_hash, name, validRole, finalCustomerId]
     );
 
     const userPayload = {
       id: result.insertId,
       email,
       name,
-      role: "customer",
-      customer_id: customerId || null,
+      role: validRole,
+      customer_id: finalCustomerId,
     };
 
     const token = signAccessToken(userPayload);

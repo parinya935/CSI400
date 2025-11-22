@@ -140,7 +140,7 @@ export default function Customers() {
             <div className="form-row">
               <div>
                 <label>
-                  Name *
+                  Building Name *
                   <input
                     name="name"
                     value={form.name}

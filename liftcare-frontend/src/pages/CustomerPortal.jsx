@@ -8,6 +8,8 @@ export default function CustomerPortal() {
   const customerId = useCustomerId(); // ✅ ดึง customer_id
 
   const [customerData, setCustomerData] = useState(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [allCustomers, setAllCustomers] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [elevators, setElevators] = useState([]);
   const [contracts, setContracts] = useState([]);
@@ -17,20 +19,67 @@ export default function CustomerPortal() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadCustomerPortal() {
-    // ✅ ตรวจสอบว่ามี customer_id
-    if (!customerId) {
-      setError("Customer ID not found. Please contact admin.");
-      setLoading(false);
-      return;
-    }
-
+  async function loadCustomerPortal(targetCustomerId = null) {
     try {
       setLoading(true);
       setError("");
 
-      const [cust, bld, elv, con, quo, inv] = await Promise.all([
-        api.get("/api/customers/me"),
+      // ดึงรายชื่อลูกค้าทั้งหมด (สำหรับ admin)
+      let allCusts = [];
+      if (userRole === "admin") {
+        try {
+          allCusts = await api.get("/api/customers");
+          setAllCustomers(allCusts || []);
+        } catch (e) {
+          console.warn("Could not fetch customers list:", e);
+        }
+      }
+
+      // กำหนดลูกค้าที่จะดูข้อมูล
+      let targetCustId = targetCustomerId;
+      if (!targetCustId) {
+        if (userRole === "customer") {
+          // สำหรับ customer ใช้ customer_id ของตัวเอง
+          if (!customerId) {
+            setError("Customer ID not found. Please contact admin.");
+            setLoading(false);
+            return;
+          }
+          targetCustId = customerId;
+        } else if (userRole === "admin" && allCusts.length > 0) {
+          // สำหรับ admin ถ้ายังไม่เลือก ให้เลือกลูกค้าแรก
+          targetCustId = allCusts[0].id;
+          setSelectedCustomerId(allCusts[0].id);
+        }
+      }
+
+      if (!targetCustId) {
+        setError("No customer selected.");
+        setLoading(false);
+        return;
+      }
+
+      // ดึงข้อมูลลูกค้า
+      let custData = null;
+      if (userRole === "admin") {
+        // สำหรับ admin หาข้อมูลลูกค้าจากรายชื่อที่ดึงมา
+        const selectedCust = allCusts.find((c) => c.id === targetCustId);
+        if (selectedCust) {
+          custData = selectedCust;
+          setCustomerData(selectedCust);
+        }
+      } else {
+        // สำหรับ customer ใช้ /api/customers/me
+        try {
+          custData = await api.get("/api/customers/me");
+          setCustomerData(custData);
+        } catch (e) {
+          console.error("Could not fetch customer data:", e);
+        }
+      }
+
+      // ดึงข้อมูลทั้งหมด
+      const [bld, elv, con, quo, inv] = await Promise.all([
         api.get("/api/buildings"),
         api.get("/api/elevators"),
         api.get("/api/contracts"),
@@ -38,18 +87,45 @@ export default function CustomerPortal() {
         api.get("/api/invoices"),
       ]);
 
-      setCustomerData(cust);
-      setBuildings(bld || []);
-      setElevators(elv || []);
-      setContracts(con || []);
-      setQuotations(quo || []);
-      setInvoices(inv || []);
+      // Filter ข้อมูลตามลูกค้าที่เลือก (ถ้าเป็น admin)
+      if (targetCustId && userRole === "admin") {
+        // Filter buildings ตาม customer_id
+        const filteredBuildings = (bld || []).filter(
+          (b) => b.customer_id === targetCustId
+        );
+        setBuildings(filteredBuildings);
+
+        // Filter elevators ตาม buildings
+        const buildingIds = new Set(filteredBuildings.map((b) => b.id));
+        const filteredElevators = (elv || []).filter((e) =>
+          buildingIds.has(e.building_id)
+        );
+        setElevators(filteredElevators);
+
+        // Filter contracts, quotations, invoices ตาม customer_id
+        setContracts((con || []).filter((c) => c.customer_id === targetCustId));
+        setQuotations((quo || []).filter((q) => q.customer_id === targetCustId));
+        setInvoices((inv || []).filter((i) => i.customer_id === targetCustId));
+      } else {
+        // สำหรับ customer ปกติ หรือ admin ที่ยังไม่เลือก
+        setBuildings(bld || []);
+        setElevators(elv || []);
+        setContracts(con || []);
+        setQuotations(quo || []);
+        setInvoices(inv || []);
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load customer portal");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleCustomerChange(e) {
+    const custId = e.target.value ? Number(e.target.value) : null;
+    setSelectedCustomerId(custId);
+    loadCustomerPortal(custId);
   }
 
   useEffect(() => {
@@ -87,7 +163,7 @@ export default function CustomerPortal() {
     .slice(0, 3);
 
   return (
-    <ProtectedPage userRole={userRole} allowedRoles="customer">
+    <ProtectedPage userRole={userRole} allowedRoles={["admin", "customer"]}>
       <div>
         {/* Header */}
         <div className="app-page-header">
@@ -97,14 +173,45 @@ export default function CustomerPortal() {
           </p>
         </div>
 
+        {/* Selector สำหรับ admin เลือกลูกค้า */}
+        {userRole === "admin" && allCustomers.length > 0 && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+              เลือกลูกค้าที่ต้องการดูข้อมูล:
+            </label>
+            <select
+              value={selectedCustomerId || ""}
+              onChange={handleCustomerChange}
+              className="input"
+              style={{ width: "100%", maxWidth: 400 }}
+            >
+              <option value="">-- เลือกลูกค้า --</option>
+              {allCustomers.map((cust) => (
+                <option key={cust.id} value={cust.id}>
+                  {cust.name}
+                  {cust.business_type ? ` (${cust.business_type})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {loading && <div className="card">Loading portal...</div>}
         {error && <div className="card error">{error}</div>}
 
-        {!loading && !error && (
+        {!loading && !error && userRole === "admin" && allCustomers.length === 0 && (
+          <div className="card" style={{ textAlign: "center", padding: 24 }}>
+            <p>ยังไม่มีลูกค้าในระบบ กรุณาเพิ่มลูกค้าก่อน</p>
+          </div>
+        )}
+
+        {!loading && !error && customerData && (
           <>
             {/* Section 1: Company Info */}
             <div className="card">
-              <div className="card-title">Your Company Information</div>
+              <div className="card-title">
+                {userRole === "admin" ? "Customer Information" : "Your Company Information"}
+              </div>
               {customerData && (
                 <div>
                   <p>

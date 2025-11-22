@@ -13,7 +13,7 @@ const emptyForm = {
   maintenance_times_per_year: "",
   included_items: "",
   excluded_items: "",
-  notify_before_days: 30,
+  notify_before_days: "30",
 };
 
 export default function Contracts() {
@@ -51,7 +51,21 @@ export default function Contracts() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    
+    // ถ้าเปลี่ยน contract_type
+    if (name === "contract_type") {
+      if (value === "per_call") {
+        // เปลี่ยนเป็น per_call ให้ clear notify_before_days
+        setForm((f) => ({ ...f, [name]: value, notify_before_days: "" }));
+      } else if (value === "annual") {
+        // เปลี่ยนเป็น annual ให้ตั้งค่า default เป็น 30
+        setForm((f) => ({ ...f, [name]: value, notify_before_days: "30" }));
+      } else {
+        setForm((f) => ({ ...f, [name]: value }));
+      }
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
   }
 
   async function handleSubmit(e) {
@@ -77,9 +91,11 @@ export default function Contracts() {
         : 0,
       included_items: form.included_items || null,
       excluded_items: form.excluded_items || null,
-      notify_before_days: form.notify_before_days
-        ? Number(form.notify_before_days)
-        : 30,
+      notify_before_days: form.contract_type === "per_call" 
+        ? null 
+        : (form.notify_before_days && form.notify_before_days !== "ไม่ใช้สำหรับ Per Call contract"
+            ? Number(form.notify_before_days)
+            : 30),
     };
 
     try {
@@ -276,11 +292,14 @@ export default function Contracts() {
                 <label>
                   Notify Before (days)
                   <input
-                    type="number"
+                    type={form.contract_type === "per_call" ? "text" : "number"}
                     name="notify_before_days"
-                    value={form.notify_before_days}
+                    value={form.contract_type === "per_call" ? "ไม่ใช้สำหรับ Per Call contract" : form.notify_before_days}
                     onChange={handleChange}
                     className="input"
+                    disabled={form.contract_type === "per_call"}
+                    readOnly={form.contract_type === "per_call"}
+                    style={form.contract_type === "per_call" ? { color: "#6b7280", fontStyle: "italic" } : {}}
                   />
                 </label>
               </div>

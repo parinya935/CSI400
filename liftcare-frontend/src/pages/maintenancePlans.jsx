@@ -55,10 +55,23 @@ export default function MaintenancePlans() {
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
-    setForm((f) => ({
-      ...f,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    
+    // ถ้าเลือก elevator ให้ดึงค่า next_maintenance_at จาก elevator
+    if (name === "elevator_id" && value) {
+      const selectedElevator = elevators.find((e) => e.id === value);
+      setForm((f) => ({
+        ...f,
+        elevator_id: value,
+        next_run_at: selectedElevator?.next_maintenance_at
+          ? selectedElevator.next_maintenance_at.slice(0, 10)
+          : "",
+      }));
+    } else {
+      setForm((f) => ({
+        ...f,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    }
   }
 
   async function handleSubmit(e) {
@@ -95,14 +108,20 @@ export default function MaintenancePlans() {
 
   function handleEdit(plan) {
     setEditingId(plan.id);
+    // ดึงค่า next_maintenance_at จาก elevator ถ้ามี
+    const elevator = elevators.find((e) => e.id === plan.elevator_id);
+    const nextMaintenance = elevator?.next_maintenance_at
+      ? elevator.next_maintenance_at.slice(0, 10)
+      : plan.next_run_at
+      ? plan.next_run_at.slice(0, 10)
+      : "";
+    
     setForm({
       elevator_id: plan.elevator_id,
       contract_id: plan.contract_id || "",
       template_id: plan.template_id,
       frequency_per_year: String(plan.frequency_per_year || 4),
-      next_run_at: plan.next_run_at
-        ? plan.next_run_at.slice(0, 10)
-        : "",
+      next_run_at: nextMaintenance,
       is_active: !!plan.is_active,
     });
   }
@@ -218,13 +237,15 @@ export default function MaintenancePlans() {
               </div>
               <div>
                 <label>
-                  Next run at
+                  Next maintenance
                   <input
                     type="date"
                     name="next_run_at"
                     value={form.next_run_at}
                     onChange={handleChange}
                     className="input"
+                    disabled={!form.elevator_id}
+                    title={!form.elevator_id ? "กรุณาเลือกลิฟต์ก่อน" : ""}
                   />
                 </label>
               </div>
@@ -274,7 +295,7 @@ export default function MaintenancePlans() {
                   <th>Template</th>
                   <th>Contract</th>
                   <th>Freq/Year</th>
-                  <th>Next run</th>
+                  <th>Next maintenance</th>
                   <th>Last run</th>
                   <th>Active</th>
                   <th style={{ width: 150 }}>Actions</th>

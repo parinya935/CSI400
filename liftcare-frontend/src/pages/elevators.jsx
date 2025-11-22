@@ -14,7 +14,6 @@ const emptyForm = {
   capacity: "",
   state: "normal",
   last_maintenance_at: "",
-  next_maintenance_at: "",
 };
 
 export default function Elevators() {
@@ -77,7 +76,6 @@ export default function Elevators() {
       capacity: form.capacity || null,
       state: form.state || "normal",
       last_maintenance_at: form.last_maintenance_at || null,
-      next_maintenance_at: form.next_maintenance_at || null,
     };
 
     try {
@@ -109,9 +107,6 @@ export default function Elevators() {
       state: elev.state || "normal",
       last_maintenance_at: elev.last_maintenance_at
         ? elev.last_maintenance_at.slice(0, 10)
-        : "",
-      next_maintenance_at: elev.next_maintenance_at
-        ? elev.next_maintenance_at.slice(0, 10)
         : "",
     });
   }
@@ -175,13 +170,18 @@ export default function Elevators() {
             <div className="form-row">
               <div>
                 <label>
-                  Name *
-                  <input
+                  Elevator Type *
+                  <select
                     name="name"
                     value={form.name}
                     onChange={handleChange}
                     className="input"
-                  />
+                  >
+                    <option value="">-- เลือกประเภทลิฟต์ --</option>
+                    <option value="Home Elevator">ลิฟท์บ้าน (Home Elevator)</option>
+                    <option value="Cargo Lift">ลิฟท์ยกของ (Cargo Lift)</option>
+                    <option value="Passenger Elevator">ลิฟท์โดยสาร (Passenger Elevator)</option>
+                  </select>
                 </label>
               </div>
               <div>
@@ -286,33 +286,17 @@ export default function Elevators() {
               </select>
             </label>
 
-            {/* วันที่บำรุงล่าสุด / ครั้งถัดไป */}
-            <div className="form-row">
-              <div>
-                <label>
-                  Last Maintenance
-                  <input
-                    type="date"
-                    name="last_maintenance_at"
-                    value={form.last_maintenance_at}
-                    onChange={handleChange}
-                    className="input"
-                  />
-                </label>
-              </div>
-              <div>
-                <label>
-                  Next Maintenance
-                  <input
-                    type="date"
-                    name="next_maintenance_at"
-                    value={form.next_maintenance_at}
-                    onChange={handleChange}
-                    className="input"
-                  />
-                </label>
-              </div>
-            </div>
+            {/* วันที่บำรุงล่าสุด */}
+            <label>
+              Last Maintenance
+              <input
+                type="date"
+                name="last_maintenance_at"
+                value={form.last_maintenance_at}
+                onChange={handleChange}
+                className="input"
+              />
+            </label>
 
             {/* ปุ่ม */}
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -344,7 +328,7 @@ export default function Elevators() {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Name</th>
+                  <th>Elevator Type</th>
                   <th>Building</th>
                   <th>Brand/Model</th>
                   <th>State</th>

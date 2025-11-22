@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../api";
 import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
+import { useAuth } from "../auth";
 import FormModal from "../components/FormModal";
 
 const emptyForm = {
@@ -11,27 +12,44 @@ const emptyForm = {
   notes: "",
 };
 
+const emptyRequestForm = {
+  phone: "",
+  specialty: "",
+  notes: "",
+  address: "",
+  date_of_birth: "",
+  age: "",
+  experience: "",
+  education: "",
+};
+
 export default function Technicians() {
   const api = useApi();
   const userRole = useRoleCheck();
+  const { user } = useAuth();
   const [technicians, setTechnicians] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [requestForm, setRequestForm] = useState(emptyRequestForm);
   const [editingId, setEditingId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   async function loadData() {
     try {
       setLoading(true);
       setError("");
-      const [ts, us] = await Promise.all([
-        api.get("/api/technicians"),
-        api.get("/api/technician-users"),
-      ]);
-      setTechnicians(ts || []);
-      setUsers(us || []);
+      // สำหรับ admin เท่านั้นที่ต้องโหลดข้อมูลช่างและ users
+      if (userRole === "admin") {
+        const [ts, us] = await Promise.all([
+          api.get("/api/technicians"),
+          api.get("/api/technician-users"),
+        ]);
+        setTechnicians(ts || []);
+        setUsers(us || []);
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load technicians");
@@ -47,6 +65,59 @@ export default function Technicians() {
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
+  }
+
+  function calculateAge(dateOfBirth) {
+    if (!dateOfBirth) return "";
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 0 ? String(age) : "";
+  }
+
+  function handleRequestChange(e) {
+    const { name, value } = e.target;
+    
+    // ถ้าเปลี่ยน date_of_birth ให้คำนวณอายุอัตโนมัติ
+    if (name === "date_of_birth") {
+      const calculatedAge = calculateAge(value);
+      setRequestForm((f) => ({ 
+        ...f, 
+        [name]: value,
+        age: calculatedAge
+      }));
+    } else {
+      setRequestForm((f) => ({ ...f, [name]: value }));
+    }
+  }
+
+  async function handleSubmitRequest(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      // TODO: ส่ง request ไปยัง backend (จะทำทีหลัง)
+      const payload = {
+        user_id: user.id,
+        user_name: user.name,
+        user_email: user.email,
+        ...requestForm,
+      };
+      
+      // สำหรับตอนนี้แค่แสดง alert
+      console.log("Technician Request:", payload);
+      alert("ส่งคำขอสมัครเป็นช่างเรียบร้อยแล้ว รอการอนุมัติจากผู้ดูแลระบบ");
+      
+      setRequestForm(emptyRequestForm);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Error submitting request");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -119,8 +190,186 @@ export default function Technicians() {
     return `${u.name} (${u.email})`;
   }
 
+  // สำหรับ technician: แสดงฟอร์มขอสมัคร
+  if (userRole === "technician") {
+    return (
+      <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
+        <div>
+          {/* Header */}
+          <div className="app-page-header">
+            <h2 className="app-page-title">New Technician Request</h2>
+            <p className="app-page-subtitle">
+              กรอกข้อมูลเพื่อสมัครเป็นช่างเทคนิคในระบบ
+            </p>
+          </div>
+
+          {error && <div className="card error">{error}</div>}
+
+          {/* ฟอร์มขอสมัคร */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">ข้อมูลการสมัครเป็นช่างเทคนิค</div>
+            </div>
+
+            <form onSubmit={handleSubmitRequest}>
+              {/* User Info (Read-only) */}
+              <label>
+                ชื่อผู้ใช้งาน
+                <input
+                  type="text"
+                  className="input"
+                  value={`${user?.name || ""} (${user?.email || ""})`}
+                  disabled
+                  style={{ backgroundColor: "#f5f5f5", color: "#6b7280" }}
+                />
+              </label>
+
+              {/* Phone + Specialty */}
+              <div className="form-row">
+                <div>
+                  <label>
+                    Phone *
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={requestForm.phone}
+                      onChange={handleRequestChange}
+                      className="input"
+                      placeholder="เช่น 081-234-5678"
+                      required
+                    />
+                  </label>
+                </div>
+                <div>
+                  <label>
+                    Specialty (ความเชี่ยวชาญ) *
+                    <input
+                      name="specialty"
+                      value={requestForm.specialty}
+                      onChange={handleRequestChange}
+                      className="input"
+                      placeholder="เช่น Mitsubishi, Inverter, Rescue..."
+                      required
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Address */}
+              <label>
+                Address *
+                <textarea
+                  name="address"
+                  value={requestForm.address}
+                  onChange={handleRequestChange}
+                  className="input"
+                  rows={2}
+                  placeholder="ที่อยู่"
+                  required
+                />
+              </label>
+
+              {/* Date of Birth + Age */}
+              <div className="form-row">
+                <div>
+                  <label>
+                    Date of Birth *
+                    <input
+                      type="date"
+                      name="date_of_birth"
+                      value={requestForm.date_of_birth}
+                      onChange={handleRequestChange}
+                      className="input"
+                      required
+                    />
+                  </label>
+                </div>
+                <div>
+                  <label>
+                    Age *
+                    <input
+                      type="number"
+                      name="age"
+                      value={requestForm.age}
+                      onChange={handleRequestChange}
+                      className="input"
+                      placeholder="คำนวณอัตโนมัติจาก Date of Birth"
+                      min={18}
+                      max={100}
+                      disabled
+                      readOnly
+                      required
+                      style={{ backgroundColor: "#f5f5f5", color: "#6b7280", cursor: "not-allowed" }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Experience + Education */}
+              <div className="form-row">
+                <div>
+                  <label>
+                    ประสบการณ์ทำงาน (ปี) *
+                    <input
+                      type="number"
+                      name="experience"
+                      value={requestForm.experience}
+                      onChange={handleRequestChange}
+                      className="input"
+                      placeholder="จำนวนปี"
+                      min={0}
+                      required
+                    />
+                  </label>
+                </div>
+                <div>
+                  <label>
+                    วุฒิการศึกษา *
+                    <input
+                      name="education"
+                      value={requestForm.education}
+                      onChange={handleRequestChange}
+                      className="input"
+                      placeholder="เช่น ปวช., ปวส., ปริญญาตรี..."
+                      required
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <label>
+                Notes
+                <textarea
+                  name="notes"
+                  value={requestForm.notes}
+                  onChange={handleRequestChange}
+                  className="input"
+                  rows={3}
+                  placeholder="ข้อมูลเพิ่มเติม (ถ้ามี)"
+                />
+              </label>
+
+              {/* Submit Button */}
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <button
+                  type="submit"
+                  className="button primary"
+                  disabled={submitting}
+                >
+                  {submitting ? "กำลังส่ง..." : "Submit Request"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </ProtectedPage>
+    );
+  }
+
+  // สำหรับ admin: แสดงหน้าจัดการช่างแบบเดิม
   return (
-    <ProtectedPage userRole={userRole} allowedRoles="admin">
+    <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
       <div>
         {/* Header */}
         <div className="app-page-header">

@@ -7,6 +7,8 @@ export default function TechnicianPortal() {
   const userRole = useRoleCheck();
 
   const [technicianData, setTechnicianData] = useState(null);
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState(null);
+  const [allTechnicians, setAllTechnicians] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [elevators, setElevators] = useState([]);
   const [parts, setParts] = useState([]);
@@ -16,11 +18,47 @@ export default function TechnicianPortal() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadTechnicianPortal() {
+  async function loadTechnicianPortal(technicianId = null) {
     try {
       setLoading(true);
       setError("");
 
+      // ดึงข้อมูลช่างทั้งหมด (สำหรับ admin)
+      let techs = [];
+      try {
+        techs = await api.get("/api/technicians");
+        setAllTechnicians(techs || []);
+      } catch (e) {
+        console.warn("Could not fetch technicians list:", e);
+      }
+
+      // กำหนดช่างที่จะดูข้อมูล
+      let targetTechId = technicianId;
+      if (!targetTechId) {
+        // ถ้าไม่มีการเลือก ให้ใช้ช่างของตัวเอง (สำหรับ technician) หรือช่างแรก (สำหรับ admin)
+        const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (userRole === "technician") {
+          const myTech = techs.find((t) => t.user_id === currentUser.id);
+          if (myTech) {
+            targetTechId = myTech.id;
+            setSelectedTechnicianId(myTech.id);
+            setTechnicianData(myTech);
+          }
+        } else if (userRole === "admin" && techs.length > 0) {
+          // สำหรับ admin ถ้ายังไม่เลือก ให้เลือกช่างแรก
+          targetTechId = techs[0].id;
+          setSelectedTechnicianId(techs[0].id);
+          setTechnicianData(techs[0]);
+        }
+      } else {
+        // ถ้ามีการเลือกแล้ว ให้หาข้อมูลช่างที่เลือก
+        const selectedTech = techs.find((t) => t.id === targetTechId);
+        if (selectedTech) {
+          setTechnicianData(selectedTech);
+        }
+      }
+
+      // ดึงข้อมูลทั้งหมด
       const [
         jobsData,
         elevData,
@@ -35,30 +73,50 @@ export default function TechnicianPortal() {
         api.get("/api/maintenance/plans"),
       ]);
 
-      setJobs(jobsData || []);
-      setElevators(elevData || []);
+      // Filter ข้อมูลตามช่างที่เลือก (ถ้าเป็น admin และเลือกช่างแล้ว)
+      if (targetTechId && userRole === "admin") {
+        // Filter jobs ตาม technician_id
+        const filteredJobs = (jobsData || []).filter(
+          (job) => job.technician_id === targetTechId
+        );
+        setJobs(filteredJobs);
+
+        // Filter elevators ที่ช่างคนนี้ทำงาน (จาก jobs)
+        const elevatorIds = new Set(
+          filteredJobs.map((job) => job.elevator_id).filter(Boolean)
+        );
+        const filteredElevators = (elevData || []).filter((e) =>
+          elevatorIds.has(e.id)
+        );
+        setElevators(filteredElevators);
+
+        // Filter maintenance plans ที่เกี่ยวข้องกับ elevators เหล่านี้
+        const filteredPlans = (plansData || []).filter((p) =>
+          elevatorIds.has(p.elevator_id)
+        );
+        setMaintenancePlans(filteredPlans);
+      } else {
+        // สำหรับ technician ปกติ หรือ admin ที่ยังไม่เลือก
+        setJobs(jobsData || []);
+        setElevators(elevData || []);
+        setMaintenancePlans(plansData || []);
+      }
+
+      // Parts และ stocks ไม่ต้อง filter (เป็นข้อมูลทั่วไป)
       setParts(partsData || []);
       setStocks(stocksData || []);
-      setMaintenancePlans(plansData || []);
-
-      // Get technician info (assuming it's embedded in user context)
-      // For now, fetch it from technicians endpoint
-      try {
-        const techs = await api.get("/api/technicians");
-        const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-        const myTech = techs.find((t) => t.user_id === currentUser.id);
-        if (myTech) {
-          setTechnicianData(myTech);
-        }
-      } catch (e) {
-        console.warn("Could not fetch technician data:", e);
-      }
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load technician portal");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleTechnicianChange(e) {
+    const techId = e.target.value ? Number(e.target.value) : null;
+    setSelectedTechnicianId(techId);
+    loadTechnicianPortal(techId);
   }
 
   useEffect(() => {
@@ -92,7 +150,7 @@ export default function TechnicianPortal() {
     .slice(0, 5);
 
   return (
-    <ProtectedPage userRole={userRole} allowedRoles="technician">
+    <ProtectedPage userRole={userRole} allowedRoles={["admin", "technician"]}>
       <div>
         {/* Header */}
         <div className="app-page-header">
@@ -102,15 +160,46 @@ export default function TechnicianPortal() {
           </p>
         </div>
 
+        {/* Selector สำหรับ admin เลือกช่าง */}
+        {userRole === "admin" && allTechnicians.length > 0 && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+              เลือกช่างที่ต้องการดูข้อมูล:
+            </label>
+            <select
+              value={selectedTechnicianId || ""}
+              onChange={handleTechnicianChange}
+              className="input"
+              style={{ width: "100%", maxWidth: 400 }}
+            >
+              <option value="">-- เลือกช่าง --</option>
+              {allTechnicians.map((tech) => (
+                <option key={tech.id} value={tech.id}>
+                  {tech.name} ({tech.email})
+                  {tech.specialty ? ` - ${tech.specialty}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {loading && <div className="card">Loading portal...</div>}
         {error && <div className="card error">{error}</div>}
 
-        {!loading && !error && (
+        {!loading && !error && userRole === "admin" && allTechnicians.length === 0 && (
+          <div className="card" style={{ textAlign: "center", padding: 24 }}>
+            <p>ยังไม่มีช่างในระบบ กรุณาเพิ่มช่างก่อน</p>
+          </div>
+        )}
+
+        {!loading && !error && technicianData && (
           <>
             {/* Section 1: Technician Info */}
-            <div className="card">
-              <div className="card-title">Your Information</div>
-              {technicianData && (
+            {technicianData && (
+              <div className="card">
+                <div className="card-title">
+                  {userRole === "admin" ? "Technician Information" : "Your Information"}
+                </div>
                 <div>
                   <p>
                     <strong>Name:</strong> {technicianData.name}
@@ -128,8 +217,8 @@ export default function TechnicianPortal() {
                     <strong>Notes:</strong> {technicianData.notes || "-"}
                   </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Section 2: Job Statistics */}
             <div className="dashboard-grid">
