@@ -13,6 +13,7 @@ const emptyForm = {
   total_labor_hours: "",
   labor_cost: 0,
   parts_cost: "",
+  parts_cost_with_markup: 0,
 };
 
 export default function MaintenanceJobs() {
@@ -24,6 +25,8 @@ export default function MaintenanceJobs() {
   const [technicians, setTechnicians] = useState([]);
   const [contracts, setContracts] = useState([]);
   const [laborRate, setLaborRate] = useState(0);
+  const [partsMarkupPercent, setPartsMarkupPercent] = useState(0);
+  const [callFee, setCallFee] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,18 +43,34 @@ export default function MaintenanceJobs() {
     try {
       setLoading(true);
       setError("");
-      const [jobsData, elevs, techs, cons, settings] = await Promise.all([
+      
+      // Always load jobs, elevators, and contracts
+      const apiCalls = [
         api.get("/api/maintenance/jobs"),
         api.get("/api/elevators"),
-        api.get("/api/technicians"),
         api.get("/api/contracts"),
-        api.get("/api/pricing-settings"),
-      ]);
-      setJobs(jobsData || []);
-      setElevators(elevs || []);
-      setTechnicians(techs || []);
-      setContracts(cons || []);
-      setLaborRate(settings?.labor_rate_per_hour || 0);
+      ];
+      
+      // Only admins can load technicians and pricing settings
+      if (userRole === "admin") {
+        apiCalls.push(api.get("/api/technicians"));
+        apiCalls.push(api.get("/api/pricing-settings"));
+      }
+      
+      const results = await Promise.all(apiCalls);
+      
+      setJobs(results[0] || []);
+      setElevators(results[1] || []);
+      setContracts(results[2] || []);
+      
+      // Only set technicians and pricing settings if admin
+      if (userRole === "admin") {
+        setTechnicians(results[3] || []);
+        const settings = results[4];
+        setLaborRate(settings?.labor_rate_per_hour || 0);
+        setPartsMarkupPercent(settings?.parts_markup_percent || 0);
+        setCallFee(settings?.call_fee || 0);
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load maintenance jobs");
@@ -66,6 +85,11 @@ export default function MaintenanceJobs() {
       const hours = Number(value || 0);
       const cost = hours * laborRate;
       setForm((f) => ({ ...f, total_labor_hours: value, labor_cost: cost }));
+    } else if (name === "parts_cost") {
+      const baseCost = Number(value || 0);
+      const markupAmount = baseCost * (partsMarkupPercent / 100);
+      const totalPartsCost = baseCost + markupAmount;
+      setForm((f) => ({ ...f, parts_cost: value, parts_cost_with_markup: totalPartsCost }));
     } else {
       setForm((f) => ({ ...f, [name]: value }));
     }
@@ -80,8 +104,8 @@ export default function MaintenanceJobs() {
     }
 
     const labor = form.labor_cost ? Number(form.labor_cost) : 0;
-    const parts = form.parts_cost ? Number(form.parts_cost) : 0;
-    const total = labor + parts;
+    const parts = form.parts_cost_with_markup ? Number(form.parts_cost_with_markup) : 0;
+    const total = labor + parts + callFee;
 
     const payload = {
       elevator_id: form.elevator_id,
@@ -99,6 +123,7 @@ export default function MaintenanceJobs() {
         : 0,
       labor_cost: labor,
       parts_cost: parts,
+      call_fee: callFee,
       total_cost: total,
     };
 
@@ -120,6 +145,9 @@ export default function MaintenanceJobs() {
   function handleEdit(job) {
     const hours = Number(job.total_labor_hours || 0);
     const cost = hours * laborRate;
+    const partsCostWithMarkup = Number(job.parts_cost || 0);
+    // คำนวณ parts_cost ดิบจาก parts_cost_with_markup
+    const baseParts = partsCostWithMarkup / (1 + partsMarkupPercent / 100);
     setEditingId(job.id);
     setForm({
       elevator_id: job.elevator_id || "",
@@ -135,8 +163,8 @@ export default function MaintenanceJobs() {
           ? String(job.total_labor_hours)
           : "",
       labor_cost: cost,
-      parts_cost:
-        job.parts_cost != null ? String(job.parts_cost) : "",
+      parts_cost: String(baseParts),
+      parts_cost_with_markup: partsCostWithMarkup,
     });
   }
 
@@ -153,7 +181,7 @@ export default function MaintenanceJobs() {
 
   function handleCancel() {
     setEditingId(null);
-    setForm({ ...emptyForm, labor_cost: 0 });
+    setForm(emptyForm);
   }
 
   function elevatorLabel(eid) {
@@ -249,6 +277,7 @@ export default function MaintenanceJobs() {
                     value={form.technician_id}
                     onChange={handleChange}
                     className="input"
+                    disabled={technicians.length === 0}
                   >
                     <option value="">-- not assigned --</option>
                     {technicians.map((t) => (
@@ -307,6 +336,19 @@ export default function MaintenanceJobs() {
             {/* เวลาและค่าใช้จ่าย */}
             <div className="form-row">
               <div>
+                <label>Call Fee (ค่าเรียกช่าง)</label>
+                <input
+                  type="number"
+                  name="call_fee"
+                  value={callFee}
+                  className="input"
+                  disabled
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div>
                 <label>
                   Labor Hours
                   <input
@@ -334,7 +376,7 @@ export default function MaintenanceJobs() {
             <div className="form-row">
               <div>
                 <label>
-                  Parts Cost
+                  Parts Cost (Raw)
                   <input
                     type="number"
                     step="0.01"
@@ -342,8 +384,19 @@ export default function MaintenanceJobs() {
                     value={form.parts_cost}
                     onChange={handleChange}
                     className="input"
+                    placeholder="ค่าอะไหล่เบื้องต้น"
                   />
                 </label>
+              </div>
+              <div>
+                <label>Parts Cost (with {partsMarkupPercent}% Markup)</label>
+                <input
+                  type="number"
+                  name="parts_cost_with_markup"
+                  value={Number(form.parts_cost_with_markup || 0).toFixed(2)}
+                  className="input"
+                  disabled
+                />
               </div>
             </div>
 
@@ -399,7 +452,7 @@ export default function MaintenanceJobs() {
                     <td>{j.technician_name || technicianName(j.technician_id)}</td>
                     <td>{renderJobType(j.job_type)}</td>
                     <td>{j.contract_code || contractCode(j.contract_id)}</td>
-                    <td>{j.total_cost}</td>
+                    <td>{(Number(j.labor_cost || 0) + Number(j.parts_cost || 0) + Number(callFee || 0)).toFixed(2)}</td>
                     <td>
                       {j.created_at
                         ? new Date(j.created_at).toLocaleDateString()

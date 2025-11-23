@@ -50,7 +50,20 @@ export default function Invoices() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    
+    // ถ้าเลือก quotation ให้ auto-fill total amount จากข้อมูล quotation
+    if (name === "quotation_id" && value) {
+      const selectedQuotation = quotations.find((q) => Number(q.id) === Number(value));
+      setForm((f) => ({
+        ...f,
+        [name]: value,
+        total_amount: selectedQuotation?.total_amount 
+          ? String(selectedQuotation.total_amount) 
+          : "",
+      }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
   }
 
   async function handleSubmit(e) {

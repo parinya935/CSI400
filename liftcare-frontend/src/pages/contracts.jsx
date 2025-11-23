@@ -279,12 +279,15 @@ export default function Contracts() {
                 <label>
                   Maintenance / Year
                   <input
-                    type="number"
+                    type={form.contract_type === "per_call" ? "text" : "number"}
                     name="maintenance_times_per_year"
-                    value={form.maintenance_times_per_year}
+                    value={form.contract_type === "per_call" ? "ไม่ใช้สำหรับ Per Call contract" : form.maintenance_times_per_year}
                     onChange={handleChange}
                     className="input"
                     placeholder="เช่น 4 (ตรวจ 4 ครั้ง/ปี)"
+                    disabled={form.contract_type === "per_call"}
+                    readOnly={form.contract_type === "per_call"}
+                    style={form.contract_type === "per_call" ? { color: "#6b7280", fontStyle: "italic" } : {}}
                   />
                 </label>
               </div>

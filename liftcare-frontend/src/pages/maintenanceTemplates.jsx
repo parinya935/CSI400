@@ -125,7 +125,7 @@ export default function MaintenanceTemplates() {
                 value={form.description}
                 onChange={handleChange}
                 className="input"
-                rows={3}
+                rows={8}
               />
             </label>
 

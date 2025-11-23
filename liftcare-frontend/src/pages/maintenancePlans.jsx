@@ -66,6 +66,16 @@ export default function MaintenancePlans() {
           ? selectedElevator.next_maintenance_at.slice(0, 10)
           : "",
       }));
+    } else if (name === "contract_id" && value) {
+      // ถ้าเลือก contract ให้ดึง frequency_per_year จาก contract นั้น
+      const selectedContract = contracts.find((c) => c.id === Number(value));
+      setForm((f) => ({
+        ...f,
+        contract_id: value,
+        frequency_per_year: selectedContract?.maintenance_times_per_year
+          ? String(selectedContract.maintenance_times_per_year)
+          : "4",
+      }));
     } else {
       setForm((f) => ({
         ...f,
@@ -233,6 +243,7 @@ export default function MaintenancePlans() {
                     onChange={handleChange}
                     className="input"
                     min={1}
+                    disabled={!!form.contract_id}
                   />
                 </label>
               </div>
@@ -298,7 +309,6 @@ export default function MaintenancePlans() {
                   <th>Contract</th>
                   <th>Freq/Year</th>
                   <th>Next maintenance</th>
-                  <th>Last run</th>
                   <th>Active</th>
                   {userRole === "admin" && <th style={{ width: 150 }}>Actions</th>}
                 </tr>
@@ -320,11 +330,6 @@ export default function MaintenancePlans() {
                     <td>
                       {p.next_run_at
                         ? new Date(p.next_run_at).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td>
-                      {p.last_run_at
-                        ? new Date(p.last_run_at).toLocaleDateString()
                         : "-"}
                     </td>
                     <td>{p.is_active ? "Yes" : "No"}</td>
@@ -350,7 +355,7 @@ export default function MaintenancePlans() {
                 ))}
                 {plans.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center">
+                    <td colSpan={7} className="text-center">
                       No maintenance plans.
                     </td>
                   </tr>

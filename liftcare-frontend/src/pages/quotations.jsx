@@ -18,6 +18,8 @@ export default function Quotations() {
   const [quotations, setQuotations] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [contracts, setContracts] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [callFee, setCallFee] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [form, setForm] = useState(emptyForm);
@@ -27,14 +29,18 @@ export default function Quotations() {
     try {
       setLoading(true);
       setError("");
-      const [qs, cs, ct] = await Promise.all([
+      const [qs, cs, ct, js, settings] = await Promise.all([
         api.get("/api/quotations"),
         api.get("/api/customers"),
         api.get("/api/contracts"),
+        api.get("/api/maintenance/jobs"),
+        api.get("/api/pricing-settings"),
       ]);
       setQuotations(qs);
       setCustomers(cs);
       setContracts(ct);
+      setJobs(js);
+      setCallFee(settings?.call_fee || 0);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load quotations");
@@ -49,7 +55,23 @@ export default function Quotations() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    
+    // ถ้าเลือก contract ให้ auto-fill total amount จาก maintenance jobs
+    if (name === "contract_id" && value) {
+      const contractJobs = jobs.filter((j) => Number(j.contract_id) === Number(value));
+      const totalAmount = contractJobs.reduce((sum, job) => {
+        const jobTotal = Number(job.labor_cost || 0) + Number(job.parts_cost || 0) + Number(callFee || 0);
+        return sum + jobTotal;
+      }, 0);
+      
+      setForm((f) => ({
+        ...f,
+        [name]: value,
+        total_amount: String(totalAmount.toFixed(2)),
+      }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
   }
 
   async function handleSubmit(e) {
