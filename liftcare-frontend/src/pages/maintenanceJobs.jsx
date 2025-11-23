@@ -1,5 +1,5 @@
 // src/pages/maintenanceJobs.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useApi } from "../api";
 import { useRoleCheck, ProtectedPage } from "../hooks/useRoleCheck";
 
@@ -11,7 +11,7 @@ const emptyForm = {
   ticket_id: "",
   remarks: "",
   total_labor_hours: "",
-  labor_cost: "",
+  labor_cost: 0,
   parts_cost: "",
 };
 
@@ -23,6 +23,7 @@ export default function MaintenanceJobs() {
   const [elevators, setElevators] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [contracts, setContracts] = useState([]);
+  const [laborRate, setLaborRate] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,16 +40,18 @@ export default function MaintenanceJobs() {
     try {
       setLoading(true);
       setError("");
-      const [jobsData, elevs, techs, cons] = await Promise.all([
+      const [jobsData, elevs, techs, cons, settings] = await Promise.all([
         api.get("/api/maintenance/jobs"),
         api.get("/api/elevators"),
         api.get("/api/technicians"),
         api.get("/api/contracts"),
+        api.get("/api/pricing-settings"),
       ]);
       setJobs(jobsData || []);
       setElevators(elevs || []);
       setTechnicians(techs || []);
       setContracts(cons || []);
+      setLaborRate(settings?.labor_rate_per_hour || 0);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load maintenance jobs");
@@ -59,7 +62,13 @@ export default function MaintenanceJobs() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    if (name === "total_labor_hours") {
+      const hours = Number(value || 0);
+      const cost = hours * laborRate;
+      setForm((f) => ({ ...f, total_labor_hours: value, labor_cost: cost }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
   }
 
   async function handleSubmit(e) {
@@ -99,7 +108,7 @@ export default function MaintenanceJobs() {
       } else {
         await api.post("/api/maintenance/jobs", payload);
       }
-      setForm(emptyForm);
+      setForm({ ...emptyForm, labor_cost: 0 });
       setEditingId(null);
       await loadData();
     } catch (err) {
@@ -109,6 +118,8 @@ export default function MaintenanceJobs() {
   }
 
   function handleEdit(job) {
+    const hours = Number(job.total_labor_hours || 0);
+    const cost = hours * laborRate;
     setEditingId(job.id);
     setForm({
       elevator_id: job.elevator_id || "",
@@ -123,8 +134,7 @@ export default function MaintenanceJobs() {
         job.total_labor_hours != null
           ? String(job.total_labor_hours)
           : "",
-      labor_cost:
-        job.labor_cost != null ? String(job.labor_cost) : "",
+      labor_cost: cost,
       parts_cost:
         job.parts_cost != null ? String(job.parts_cost) : "",
     });
@@ -143,7 +153,7 @@ export default function MaintenanceJobs() {
 
   function handleCancel() {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, labor_cost: 0 });
   }
 
   function elevatorLabel(eid) {
@@ -310,17 +320,14 @@ export default function MaintenanceJobs() {
                 </label>
               </div>
               <div>
-                <label>
-                  Labor Cost
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="labor_cost"
-                    value={form.labor_cost}
-                    onChange={handleChange}
-                    className="input"
-                  />
-                </label>
+                <label>Labor Cost</label>
+                <input
+                  type="number"
+                  name="labor_cost"
+                  value={Number(form.labor_cost || 0).toFixed(2)}
+                  className="input"
+                  disabled
+                />
               </div>
             </div>
 
