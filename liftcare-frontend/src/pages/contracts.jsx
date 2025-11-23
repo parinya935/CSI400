@@ -51,12 +51,17 @@ export default function Contracts() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    
+
     // ถ้าเปลี่ยน contract_type
     if (name === "contract_type") {
       if (value === "per_call") {
-        // เปลี่ยนเป็น per_call ให้ clear notify_before_days
-        setForm((f) => ({ ...f, [name]: value, notify_before_days: "" }));
+        // เปลี่ยนเป็น per_call ให้ clear notify_before_days และ maintenance_times_per_year
+        setForm((f) => ({
+          ...f,
+          [name]: value,
+          notify_before_days: "", //
+          maintenance_times_per_year: "", // [New]: Clear maintenance times for Per Call
+        }));
       } else if (value === "annual") {
         // เปลี่ยนเป็น annual ให้ตั้งค่า default เป็น 30
         setForm((f) => ({ ...f, [name]: value, notify_before_days: "30" }));
@@ -88,14 +93,16 @@ export default function Contracts() {
       end_date: form.end_date,
       maintenance_times_per_year: form.maintenance_times_per_year
         ? Number(form.maintenance_times_per_year)
-        : 0,
-      included_items: form.included_items || null,
-      excluded_items: form.excluded_items || null,
-      notify_before_days: form.contract_type === "per_call" 
-        ? null 
-        : (form.notify_before_days && form.notify_before_days !== "ไม่ใช้สำหรับ Per Call contract"
-            ? Number(form.notify_before_days)
-            : 30),
+        : 0, // (Keeps existing logic to default to 0 if input is empty)
+      included_items: form.included_items || null, //
+      excluded_items: form.excluded_items || null, //
+      notify_before_days:
+        form.contract_type === "per_call"
+          ? null // (Correctly sets to null for backend)
+          : form.notify_before_days &&
+            form.notify_before_days !== "ไม่ใช้สำหรับ Per Call contract"
+          ? Number(form.notify_before_days)
+          : 30, //
     };
 
     try {
@@ -117,22 +124,27 @@ export default function Contracts() {
   function handleEdit(c) {
     setEditingId(c.id);
     setForm({
-      customer_id:
-        c.customer_id != null ? String(c.customer_id) : "",
-      contract_code: c.contract_code || "",
-      contract_type: c.contract_type || "annual",
-      start_date: c.start_date ? c.start_date.slice(0, 10) : "",
-      end_date: c.end_date ? c.end_date.slice(0, 10) : "",
+      customer_id: c.customer_id != null ? String(c.customer_id) : "", //
+      contract_code: c.contract_code || "", //
+      contract_type: c.contract_type || "annual", //
+      start_date: c.start_date ? c.start_date.slice(0, 10) : "", //
+      end_date: c.end_date ? c.end_date.slice(0, 10) : "", //
       maintenance_times_per_year:
-        c.maintenance_times_per_year != null
+        c.contract_type === "per_call"
+          ? "" // [New]: Set to empty string for consistent UI for Per Call on edit
+          : c.maintenance_times_per_year != null
           ? String(c.maintenance_times_per_year)
           : "",
-      included_items: c.included_items || "",
-      excluded_items: c.excluded_items || "",
+      included_items: c.included_items || "", //
+      excluded_items: c.excluded_items || "", //
       notify_before_days:
-        c.notify_before_days != null ? String(c.notify_before_days) : "30",
+        c.contract_type === "per_call"
+          ? "" // [New]: Set to empty string for consistent form state on edit
+          : c.notify_before_days != null
+          ? String(c.notify_before_days)
+          : "30",
     });
-    setIsFormOpen(true);
+    setIsFormOpen(true); //
   }
 
   async function handleDelete(id) {
@@ -279,15 +291,12 @@ export default function Contracts() {
                 <label>
                   Maintenance / Year
                   <input
-                    type={form.contract_type === "per_call" ? "text" : "number"}
+                    type="number"
                     name="maintenance_times_per_year"
-                    value={form.contract_type === "per_call" ? "ไม่ใช้สำหรับ Per Call contract" : form.maintenance_times_per_year}
+                    value={form.maintenance_times_per_year}
                     onChange={handleChange}
                     className="input"
                     placeholder="เช่น 4 (ตรวจ 4 ครั้ง/ปี)"
-                    disabled={form.contract_type === "per_call"}
-                    readOnly={form.contract_type === "per_call"}
-                    style={form.contract_type === "per_call" ? { color: "#6b7280", fontStyle: "italic" } : {}}
                   />
                 </label>
               </div>
@@ -297,12 +306,20 @@ export default function Contracts() {
                   <input
                     type={form.contract_type === "per_call" ? "text" : "number"}
                     name="notify_before_days"
-                    value={form.contract_type === "per_call" ? "ไม่ใช้สำหรับ Per Call contract" : form.notify_before_days}
+                    value={
+                      form.contract_type === "per_call"
+                        ? "ไม่ใช้สำหรับ Per Call contract"
+                        : form.notify_before_days
+                    }
                     onChange={handleChange}
                     className="input"
                     disabled={form.contract_type === "per_call"}
                     readOnly={form.contract_type === "per_call"}
-                    style={form.contract_type === "per_call" ? { color: "#6b7280", fontStyle: "italic" } : {}}
+                    style={
+                      form.contract_type === "per_call"
+                        ? { color: "#6b7280", fontStyle: "italic" }
+                        : {}
+                    }
                   />
                 </label>
               </div>
@@ -378,8 +395,7 @@ export default function Contracts() {
                     </td>
                     <td>{renderTypeLabel(c.contract_type)}</td>
                     <td>
-                      {c.start_date?.slice(0, 10)} -{" "}
-                      {c.end_date?.slice(0, 10)}
+                      {c.start_date?.slice(0, 10)} - {c.end_date?.slice(0, 10)}
                     </td>
                     <td>{c.maintenance_times_per_year}</td>
                     <td style={{ textAlign: "right" }}>
