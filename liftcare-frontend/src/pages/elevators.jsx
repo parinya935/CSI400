@@ -133,7 +133,7 @@ export default function Elevators() {
   }
 
   return (
-    <ProtectedPage userRole={userRole} allowedRoles="admin">
+    <ProtectedPage userRole={userRole} allowedRoles={["admin", "customer", "technician"]}>
       <div>
         {/* หัวหน้าเพจ */}
         <div className="app-page-header">
@@ -143,15 +143,16 @@ export default function Elevators() {
           </p>
         </div>
 
-        {/* ฟอร์มลิฟต์ */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">
-              {editingId ? "Edit Elevator" : "New Elevator"}
+        {/* ฟอร์มลิฟต์ - เฉพาะ admin */}
+        {userRole === "admin" && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                {editingId ? "Edit Elevator" : "New Elevator"}
+              </div>
             </div>
-          </div>
 
-          <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
             {/* Elevator ID เฉพาะตอนสร้างใหม่ */}
             {!editingId && (
               <label>
@@ -315,6 +316,7 @@ export default function Elevators() {
             </div>
           </form>
         </div>
+        )}
 
         {/* Error / Table */}
         {error && <div className="card error">{error}</div>}
@@ -332,7 +334,7 @@ export default function Elevators() {
                   <th>Building</th>
                   <th>Brand/Model</th>
                   <th>State</th>
-                  <th style={{ width: 140 }} />
+                  {userRole === "admin" && <th style={{ width: 140 }} />}
                 </tr>
               </thead>
               <tbody>
@@ -345,22 +347,24 @@ export default function Elevators() {
                       {e.brand} {e.model}
                     </td>
                     <td>{e.state}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        className="button sm secondary"
-                        type="button"
-                        onClick={() => handleEdit(e)}
-                      >
-                        Edit
-                      </button>{" "}
-                      <button
-                        className="button sm danger"
-                        type="button"
-                        onClick={() => handleDelete(e.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    {userRole === "admin" && (
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          className="button sm secondary"
+                          type="button"
+                          onClick={() => handleEdit(e)}
+                        >
+                          Edit
+                        </button>{" "}
+                        <button
+                          className="button sm danger"
+                          type="button"
+                          onClick={() => handleDelete(e.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {elevators.length === 0 && (
